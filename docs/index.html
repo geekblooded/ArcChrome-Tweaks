@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DiaChrome Tweaks brings a customizable command bar, tab tools, and workspace styling to Google Chrome.">
+  <title>DiaChrome Tweaks</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#101217; --panel:#191c24; --text:#f4f5f7; --muted:#b6bbc6; --accent:#a7c7ff; --line:#303541; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:radial-gradient(ellipse at 80% 0%,#263653 0,transparent 38rem),var(--bg); color:var(--text); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(900px,calc(100% - 36px)); margin:auto; padding:64px 0 80px; }
+    header { padding:44px 0 52px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--accent); font-size:.78rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { margin:.4rem 0 .7rem; font-size:clamp(2.6rem,8vw,5rem); line-height:1.04; letter-spacing:-.055em; }
+    h2 { margin:0 0 16px; font-size:1.75rem; letter-spacing:-.025em; }
+    h3 { margin:24px 0 6px; font-size:1.05rem; }
+    p, li { color:var(--muted); }
+    .lead { max-width:680px; font-size:1.15rem; }
+    nav { display:flex; gap:20px; margin-top:28px; flex-wrap:wrap; }
+    a { color:var(--accent); text-underline-offset:4px; }
+    nav a { padding:10px 15px; border:1px solid #53627c; border-radius:999px; text-decoration:none; }
+    section { padding:42px 0; border-bottom:1px solid var(--line); scroll-margin-top:20px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+    .card { padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:14px; }
+    .card h3 { margin-top:0; }
+    .updated { font-size:.9rem; }
+    footer { padding-top:24px; color:var(--muted); font-size:.9rem; }
+    @media(max-width:600px) { main { padding-top:32px; } header { padding-top:25px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">A Chrome browser extension</div>
+    <h1>DiaChrome Tweaks</h1>
+    <p class="lead">A customizable browser workspace inspired by Dia and Arc, bringing a command bar, tab organization, keyboard shortcuts, and page framing controls to Google Chrome.</p>
+    <nav aria-label="Page sections"><a href="#about">About the extension</a><a href="#privacy">Privacy policy</a></nav>
+  </header>
+
+  <section id="about">
+    <h2>Make Chrome feel like your workspace</h2>
+    <p>DiaChrome Tweaks adds an in-page command bar and tab sidebar, quick tab search and grouping, URL copy actions, configurable page framing, and a custom new-tab workspace. Features are controlled through the extension settings and keyboard shortcuts. Availability can vary by operating system and Chrome-restricted pages.</p>
+    <div class="grid">
+      <article class="card"><h3>Find and switch</h3><p>Search open tabs by title or address and move between them from the command bar.</p></article>
+      <article class="card"><h3>Organize tabs</h3><p>Group tabs by website or automatically sort them into topic groups using Chrome’s tab APIs.</p></article>
+      <article class="card"><h3>Shape your workspace</h3><p>Adjust the sidebar, page edges, corner styling, themes, and shortcut behavior.</p></article>
+    </div>
+    <p>Publisher: <a href="https://github.com/geekblooded">geekblooded on GitHub</a>. Source code and project information are available in the <a href="https://github.com/geekblooded/DiaChrome-Tweaks">DiaChrome Tweaks repository</a>.</p>
+  </section>
+
+  <section id="privacy">
+    <h2>Privacy policy</h2>
+    <p class="updated"><strong>Effective date:</strong> November 16, 2026</p>
+    <p>This policy explains what DiaChrome Tweaks accesses and how that information is used. The extension is designed to process browsing information locally to provide its browser features.</p>
+
+    <h3>Information the extension accesses</h3>
+    <ul>
+      <li><strong>Open tab titles and URLs:</strong> Accessed to display and search tabs, switch between them, organize tabs into groups, and provide navigation controls.</li>
+      <li><strong>Current page title and URL:</strong> Used by in-page controls and when you invoke URL copy or navigation features.</li>
+      <li><strong>Installed extension details:</strong> Chrome’s extension-management API is used to show installed extension information and icons in the interface.</li>
+      <li><strong>Your preferences:</strong> Settings are saved with Chrome Storage Sync and Chrome local storage. Some icon data is cached locally.</li>
+    </ul>
+
+    <h3>How information is used and shared</h3>
+    <p>Tab and page information is processed by the extension to provide the features described above. Based on the published source code reviewed for this policy, browsing information is not sent to a server operated by the developer.</p>
+    <p>To display website and extension icons, the extension may request images from Google’s favicon service. Those requests include the relevant website URL or domain, which Google receives and handles under its own privacy terms. Chrome may synchronize extension settings through your Google account if Chrome Sync is enabled; that service is governed by Google’s policies and settings.</p>
+
+    <h3>Sale and advertising</h3>
+    <p>The developer does not sell browsing information, use it for advertising, or transfer it to data brokers.</p>
+
+    <h3>Retention and deletion</h3>
+    <p>Preferences and cached icon data remain in Chrome storage until cleared, removed by the extension, or deleted when you uninstall the extension. Synced settings can also be managed through your Chrome and Google account settings.</p>
+
+    <h3>Permissions</h3>
+    <p>The extension requests access to storage, tabs, tab groups, sessions, scripting, extension management, and eligible websites. These permissions support settings, tab navigation and grouping, restoring recently closed items, adding the interface to pages, and displaying installed extension details. Chrome-restricted pages do not permit extension content scripts.</p>
+
+    <h3>Changes and contact</h3>
+    <p>This policy may be updated if the extension’s behavior changes. For questions about this policy or the extension, contact the publisher through <a href="https://github.com/geekblooded">GitHub</a>.</p>
+  </section>
+  <footer>© 2026 DiaChrome Tweaks. This page describes the extension’s current implementation and may be updated as the product changes.</footer>
+</main>
+</body>
+</html>

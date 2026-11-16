@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Tab — Dia</title>
+    <link rel="stylesheet" href="../styles/dia-frame.css" />
+    <link rel="stylesheet" href="newtab.css" />
+  </head>
+  <body>
+    <main class="dia-nt-canvas">
+      <!-- Top Ambient Status Bar -->
+      <header class="dia-nt-topbar">
+        <div class="dia-nt-brand">
+          <span class="dia-nt-logo"></span>
+          <span class="dia-nt-title">Dia Workspace</span>
+        </div>
+        <div class="dia-nt-actions">
+          <button id="ntFramelessBtn" class="dia-nt-pill" type="button" title="Pop into a toolbar-less Frameless Dia Window (⌘⇧D)">
+            <span>⧉</span>
+            <span>Frameless Window (Hide Top Bar)</span>
+          </button>
+          <button id="ntFullscreenBtn" class="dia-nt-pill" type="button" title="Toggle Full-Screen Mode (⌃⌘F)">
+            <span>⛶</span>
+            <span>Full Screen</span>
+          </button>
+          <button id="ntTidyBtn" class="dia-nt-pill" type="button" title="Smart Tidy Tabs by Subject (⌥⌘T)">
+            <span>✨</span>
+            <span>Tidy Tabs</span>
+          </button>
+          <button id="ntDomainBtn" class="dia-nt-pill" type="button" title="Group Open Tabs by Domain (⌥⌘G)">
+            <span>📁</span>
+            <span>Group by Domain</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Centered Hero Command BarLauncher -->
+      <section class="dia-nt-center">
+        <div class="dia-nt-greeting" id="ntClock">Dia</div>
+        <p class="dia-nt-subtitle">Distraction-free browsing for official Google Chrome</p>
+
+        <button id="ntOpenCommandBarBtn" class="dia-nt-search-trigger" type="button">
+          <svg class="dia-nt-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span class="dia-nt-search-placeholder">Type a URL, search Google, or run a Dia command…</span>
+          <kbd class="dia-nt-kbd">⌘K</kbd>
+        </button>
+
+        <!-- Quick Pinned / Frequent Destinations -->
+        <div class="dia-nt-quick-grid" id="ntQuickGrid"></div>
+      </section>
+
+      <!-- Open Tabs & Groups Overview Deck -->
+      <section class="dia-nt-deck">
+        <div class="dia-nt-deck-header">
+          <span class="dia-nt-deck-title">Open Tabs in Workspace</span>
+          <span class="dia-nt-deck-hint">Hover left edge or press <kbd>⌘S</kbd> for Vertical Sidebar</span>
+        </div>
+        <div class="dia-nt-tabs-grid" id="ntTabsGrid"></div>
+      </section>
+    </main>
+
+    <script src="../content/fullscreen-frame.js"></script>
+    <script src="../content/command-palette.js"></script>
+    <script src="newtab.js"></script>
+  </body>
+</html>
