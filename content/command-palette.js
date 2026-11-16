@@ -762,6 +762,10 @@
         display: none;
       }
 
+      .dia-top-url-pill .dia-copy-label {
+        display: inline-block;
+      }
+
       .dia-sb-copy-btn:hover .dia-copy-label,
       .dia-sb-copy-btn.is-copied .dia-copy-label {
         max-width: 64px;
@@ -1206,6 +1210,9 @@
       }
 
       .dia-top-url-pill .dia-sb-copy-btn {
+        width: auto;
+        min-width: 26px;
+        flex: 0 0 auto;
         border-left: 1px solid var(--surface-divider);
         border-radius: 0;
         padding-left: 10px;

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ArcChrome-Tweaks",
   "version": "1.1.0",
-  "description": "Dia & Arc browser experience for official Google Chrome — frameless top-bar hide, hover vertical sidebar, bezel padding, Tidy Tabs, and Dia keyboard shortcuts.",
+  "description": "Arc-inspired sidebar, command bar, tab organization, and workspace styling for Chrome.",
   "permissions": [
     "storage",
     "tabs",
