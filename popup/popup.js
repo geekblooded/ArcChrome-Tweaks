@@ -283,7 +283,7 @@ function applyCategoryAndSearch() {
 async function syncWindowStateToggles() {
   try {
     const win = await chrome.windows.getCurrent();
-    els.framelessModeToggle.checked = win.state === 'fullscreen';
+    els.framelessModeToggle.checked = win.type === 'popup';
   } catch {
     // Ignore
   }
@@ -400,6 +400,11 @@ function bindEvents() {
 
   if (els.headerPowerToggleBtn) {
     els.headerPowerToggleBtn.addEventListener('click', async () => {
+      try {
+        await chrome.runtime.sendMessage({ type: 'DIA_DEACTIVATE_ARC' });
+      } catch {
+        // Settings still disable locally if the service worker is unavailable.
+      }
       await saveSettings({ enabled: false });
       if (els.welcomeView && els.settingsShell) {
         els.welcomeView.hidden = false;
@@ -415,6 +420,12 @@ function bindEvents() {
         await chrome.runtime.sendMessage({ type: 'DIA_ACTIVATE_ARC' });
       } catch {
         // Fallback
+      }
+    } else {
+      try {
+        await chrome.runtime.sendMessage({ type: 'DIA_DEACTIVATE_ARC' });
+      } catch {
+        // Settings still disable locally if the service worker is unavailable.
       }
     }
     await saveSettings({ enabled: on });

@@ -103,6 +103,7 @@
   ];
 
   let settings = {
+    enabled: true,
     uiTheme: 'light', // Default light theme on first install until user changes manually
     userChangedTheme: false,
     framePreset: 'arc-lavender',
@@ -159,6 +160,7 @@
 
   let topHoverBarEl = null;
   let topHoverUrlEl = null;
+  let topHoverUrlTextEl = null;
 
   let toastEl = null;
   let toastTextEl = null;
@@ -688,6 +690,7 @@
 
       .dia-sb-url-text {
         flex: 1;
+        min-width: 0;
         font-size: 12.5px;
         font-weight: 500;
         color: var(--text-primary);
@@ -742,6 +745,21 @@
         background: transparent;
         color: #10b981;
         padding: 0;
+      }
+
+      .dia-sb-url-bar .dia-sb-copy-btn,
+      .dia-top-url-pill .dia-sb-copy-btn {
+        width: 26px;
+        height: 26px;
+        margin-left: auto;
+        flex: 0 0 26px;
+        border-radius: 7px;
+        color: var(--accent);
+      }
+
+      .dia-sb-url-bar .dia-copy-label,
+      .dia-top-url-pill .dia-copy-label {
+        display: none;
       }
 
       .dia-sb-copy-btn:hover .dia-copy-label,
@@ -1113,6 +1131,10 @@
         border-top: 1px solid var(--surface-divider);
       }
 
+      .dia-sb-footer > .dia-sb-icon-btn {
+        margin-left: auto;
+      }
+
       /* =====================================================
          3. MINI-TOP HOVER URL PILL (Fullscreen / Top Hover Only)
             + Stacked Profile-Pic Extension Icons
@@ -1174,6 +1196,19 @@
         align-items: center;
         gap: 8px;
         transition: background 120ms ease, border-color 120ms ease;
+      }
+
+      .dia-top-url-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .dia-top-url-pill .dia-sb-copy-btn {
+        border-left: 1px solid var(--surface-divider);
+        border-radius: 0;
+        padding-left: 10px;
       }
 
       .dia-top-url-pill svg {
@@ -1498,7 +1533,7 @@
     sidebarTabsListEl = document.createElement('div');
     sidebarTabsListEl.className = 'dia-sb-tabs';
 
-    // Bottom Utility Bar (matching Cra / macOS Arc: Downloads & Theme Palette on left, Stacked Extensions in center, + on right)
+    // Bottom Utility Bar: Downloads and Theme Palette on the left, New Tab on the right.
     const sbFooter = document.createElement('div');
     sbFooter.className = 'dia-sb-footer';
 
@@ -1525,10 +1560,6 @@
     sbFooterLeft.appendChild(downloadsBtn);
     sbFooterLeft.appendChild(themeCycleBtn);
 
-    const sbExtTray = document.createElement('div');
-    sbExtTray.className = 'dia-top-ext-tray';
-    sbExtTray.id = 'dia-sb-ext-tray';
-
     const quickAddBtn = document.createElement('button');
     quickAddBtn.className = 'dia-sb-icon-btn';
     quickAddBtn.title = 'New Tab / Command Bar (⌘T)';
@@ -1538,7 +1569,6 @@
     });
 
     sbFooter.appendChild(sbFooterLeft);
-    sbFooter.appendChild(sbExtTray);
     sbFooter.appendChild(quickAddBtn);
 
     sidebarEl.appendChild(sbHeader);
@@ -1584,8 +1614,15 @@
     topHoverUrlEl = document.createElement('div');
     topHoverUrlEl.className = 'dia-top-url-pill';
     topHoverUrlEl.title = 'Click to open Command Bar (⌘L)';
-    topHoverUrlEl.innerHTML = `${ICONLY.lock}<span>${formatCleanHost(window.location.href)}</span>`;
+    const topUrlLock = document.createElement('span');
+    topUrlLock.className = 'dia-sb-url-lock';
+    topUrlLock.innerHTML = window.location.protocol === 'https:' ? ICONLY.lock : ICONLY.globe;
+    topHoverUrlTextEl = document.createElement('span');
+    topHoverUrlTextEl.className = 'dia-top-url-text';
+    topHoverUrlTextEl.textContent = formatCleanHost(window.location.href);
     topHoverUrlEl.addEventListener('click', () => openPalette('url'));
+    topHoverUrlEl.appendChild(topUrlLock);
+    topHoverUrlEl.appendChild(topHoverUrlTextEl);
 
     const topCopyBtn = document.createElement('button');
     topCopyBtn.className = 'dia-sb-copy-btn';
@@ -1595,6 +1632,7 @@
       e.stopPropagation();
       copyPageUrl('url', topCopyBtn);
     });
+    topHoverUrlEl.appendChild(topCopyBtn);
 
     const topExtDivider = document.createElement('span');
     topExtDivider.className = 'dia-top-ext-divider';
@@ -1615,7 +1653,6 @@
     topHoverBarEl.appendChild(topBackBtn);
     topHoverBarEl.appendChild(topReloadBtn);
     topHoverBarEl.appendChild(topHoverUrlEl);
-    topHoverBarEl.appendChild(topCopyBtn);
     topHoverBarEl.appendChild(topExtTray);
     topHoverBarEl.appendChild(topExtDivider);
     topHoverBarEl.appendChild(topFramelessBtn);
@@ -1866,10 +1903,7 @@
 
   async function refreshTopBarExtensions() {
     if (!shadow) return;
-    const trays = [
-      shadow.getElementById('dia-top-ext-tray'),
-      shadow.getElementById('dia-sb-ext-tray')
-    ].filter(Boolean);
+    const trays = [shadow.getElementById('dia-top-ext-tray')].filter(Boolean);
     if (trays.length === 0) return;
     try {
       const res = await chrome.runtime.sendMessage({ type: 'DIA_GET_INSTALLED_EXTENSIONS' });
@@ -1879,19 +1913,22 @@
         for (const ext of res.extensions) {
           const btn = document.createElement('button');
           btn.className = 'dia-top-ext-btn';
-          btn.title = `${ext.fullName || ext.name}`;
+          btn.title = ext.isSelf
+            ? 'Open DiaChrome-Tweaks popup'
+            : `${ext.fullName || ext.name} — open from Chrome’s toolbar`;
           const img = document.createElement('img');
           img.src = ext.iconDataUrl;
           img.alt = ext.name;
           btn.appendChild(img);
           btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            await chrome.runtime.sendMessage({
+            const result = await chrome.runtime.sendMessage({
               type: 'DIA_OPEN_EXTENSION',
               id: ext.id,
               optionsUrl: ext.optionsUrl,
               isSelf: ext.isSelf
             });
+            if (!result?.ok && result?.message) showToast(result.message);
           });
           tray.appendChild(btn);
         }
@@ -2041,7 +2078,7 @@
       sidebarUrlLabelEl.textContent = formatCleanHost(window.location.href);
     }
     if (topHoverUrlEl) {
-      topHoverUrlEl.innerHTML = `${ICONLY.lock}<span>${formatCleanHost(window.location.href)}</span>`;
+      if (topHoverUrlTextEl) topHoverUrlTextEl.textContent = formatCleanHost(window.location.href);
     }
     if (sidebarTabCountEl) {
       sidebarTabCountEl.textContent = `${openTabs.length} tab${openTabs.length === 1 ? '' : 's'}`;
@@ -2509,6 +2546,7 @@
   }
 
   async function openPalette(mode = 'command') {
+    if (settings.enabled === false) return;
     buildShadowDOM();
     applyCommandBarStyles();
     isOpen = true;
@@ -2571,6 +2609,7 @@
   }
 
   function onMouseMove(e) {
+    if (settings.enabled === false) return;
     if (e.clientX <= 12 && settings.sidebarMode !== 'off') {
       if (sidebarHideTimer) clearTimeout(sidebarHideTimer);
       if (!isSidebarHoverOpen) {
@@ -2591,14 +2630,36 @@
       if (!isTopBarHoverOpen && topHoverBarEl) {
         isTopBarHoverOpen = true;
         if (topHoverUrlEl) {
-          topHoverUrlEl.innerHTML = `${ICONLY.lock}<span>${formatCleanHost(window.location.href)}</span>`;
+          if (topHoverUrlTextEl) topHoverUrlTextEl.textContent = formatCleanHost(window.location.href);
         }
         topHoverBarEl.classList.add('is-visible');
       }
     }
   }
 
+  function onLinkClick(e) {
+    if (e.defaultPrevented || !isFramelessWindow || settings.enabled === false) return;
+    const source = e.target instanceof Element ? e.target : e.target?.parentElement;
+    const link = source?.closest?.('a[href]');
+    if (!link) return;
+
+    const requestsNewContext =
+      link.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1;
+    if (!requestsNewContext || !/^https?:$/i.test(new URL(link.href, window.location.href).protocol)) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    chrome.runtime.sendMessage({
+      type: 'DIA_NAVIGATE',
+      url: link.href,
+      newTab: false
+    }).catch(() => {
+      window.location.assign(link.href);
+    });
+  }
+
   function onKeyDown(e) {
+    if (settings.enabled === false) return;
     const isMeta = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
 
@@ -2698,6 +2759,10 @@
       }
     }
     isSidebarPinned = settings.sidebarMode === 'pinned';
+    if (hostEl) {
+      hostEl.style.display = settings.enabled === false ? 'none' : '';
+      if (settings.enabled === false) closePalette(false);
+    }
     applyCommandBarStyles();
     updateSidebarVisibility();
   }
@@ -2725,6 +2790,10 @@
     } else if (message.type === 'DIA_SETTINGS_UPDATED' && message.settings) {
       settings = { ...settings, ...message.settings };
       isSidebarPinned = settings.sidebarMode === 'pinned';
+      if (hostEl) {
+        hostEl.style.display = settings.enabled === false ? 'none' : '';
+        if (settings.enabled === false) closePalette(false);
+      }
       applyCommandBarStyles();
       updateSidebarVisibility();
       sendResponse({ ok: true });
@@ -2735,6 +2804,7 @@
   window.__workspaceCommandCleanup = () => {
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('keydown', onKeyDown, true);
+    document.removeEventListener('click', onLinkClick, true);
     chrome.storage.onChanged.removeListener(onStorageChanged);
     chrome.runtime.onMessage.removeListener(onRuntimeMessage);
     clearTimeout(sidebarHideTimer);
@@ -2744,6 +2814,11 @@
   };
 
   async function init() {
+    // Build the persistent UI shell as soon as the new document exists. Waiting
+    // for DOMContentLoaded/document_idle made the sidebar visibly vanish during
+    // every full-page navigation.
+    buildShadowDOM();
+
     try {
       const stored = await chrome.storage.sync.get(settings);
       settings = { ...settings, ...stored };
@@ -2752,7 +2827,9 @@
       // Keep defaults
     }
 
-    buildShadowDOM();
+    hostEl.style.display = settings.enabled === false ? 'none' : '';
+    applyCommandBarStyles();
+    updateSidebarVisibility();
 
     try {
       const winState = await chrome.runtime.sendMessage({ type: 'DIA_GET_WINDOW_STATE' });
@@ -2775,9 +2852,7 @@
     window.addEventListener('keydown', onKeyDown, true);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
+  document.addEventListener('click', onLinkClick, true);
+
+  init();
 })();

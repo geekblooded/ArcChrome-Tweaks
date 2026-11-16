@@ -133,24 +133,54 @@ async function toggleFramelessWindow(sourceTab) {
       ? await chrome.windows.get(tab.windowId)
       : await chrome.windows.getCurrent();
 
-    // If the user is currently trapped in an older popup window, merge tab back into a normal window first
+    // A popup window is Chrome's extension-level way to remove the tab strip and omnibox.
     if (win.type === 'popup' && tab && tab.id) {
       const allWindows = await chrome.windows.getAll({});
-      const normalWin = allWindows.find((w) => w.type === 'normal' && w.id !== win.id);
+      let normalWin = allWindows.find((w) => w.type === 'normal' && w.id !== win.id);
+      if (!normalWin) {
+        normalWin = await chrome.windows.create({ tabId: tab.id, type: 'normal', focused: true });
+        await chrome.windows.remove(win.id);
+        framelessTabPool = framelessTabPool.filter((entry) => entry.windowId !== win.id);
+        activeFramelessVirtualId = null;
+        notifyWindowMode(tab.id, normalWin.id);
+        return { ok: true, mode: 'normal', windowId: normalWin.id };
+      }
       if (normalWin) {
         await chrome.tabs.move(tab.id, { windowId: normalWin.id, index: -1 });
         await chrome.tabs.update(tab.id, { active: true });
-        await chrome.windows.update(normalWin.id, { focused: true, state: 'fullscreen' });
-        return { ok: true, mode: 'fullscreen' };
+        await chrome.windows.remove(win.id);
+        await chrome.windows.update(normalWin.id, { focused: true });
+        framelessTabPool = framelessTabPool.filter((entry) => entry.windowId !== win.id);
+        activeFramelessVirtualId = null;
+        notifyWindowMode(tab.id, normalWin.id);
+        return { ok: true, mode: 'normal' };
       }
     }
 
-    // Update the existing window in-place (never spawn a new Chrome window)
-    const nextState = win.state === 'fullscreen' ? 'normal' : 'fullscreen';
-    await chrome.windows.update(win.id, { state: nextState, focused: true });
-    return { ok: true, mode: nextState };
+    if (win.type !== 'popup' && tab?.id) {
+      const popup = await chrome.windows.create({ tabId: tab.id, type: 'popup', focused: true });
+      notifyWindowMode(tab.id, popup.id);
+      return { ok: true, mode: 'frameless', windowId: popup.id };
+    }
+
+    return { ok: false, mode: win.type === 'popup' ? 'frameless' : 'normal' };
   } catch (err) {
     return { ok: false, error: String(err) };
+  }
+}
+
+async function notifyWindowMode(tabId, windowId) {
+  try {
+    const win = await chrome.windows.get(windowId);
+    await chrome.tabs.sendMessage(tabId, {
+      type: 'DIA_WINDOW_STATE_CHANGED',
+      isFullscreen: win.state === 'fullscreen',
+      isFrameless: win.type === 'popup',
+      windowState: win.state,
+      windowType: win.type
+    });
+  } catch {
+    // The new document may not have installed its content script yet.
   }
 }
 
@@ -305,6 +335,83 @@ const customTabFolderAssignment = new Map();
 let framelessTabPool = [];
 let activeFramelessVirtualId = null;
 let nextFramelessVirtualId = 900001;
+const popupChildTabs = new Map();
+const popupChildTabsInFlight = new Set();
+
+// Convert fresh one-tab normal windows while the Arc experience is enabled.
+// A short settling window lets Chrome finish creating the initial tab and avoids
+// disrupting restored windows that contain multiple tabs.
+const pendingNewWindowIds = new Set();
+const processingNewWindowIds = new Set();
+
+async function frameNewWindow(windowId) {
+  if (!pendingNewWindowIds.has(windowId) || processingNewWindowIds.has(windowId)) return;
+  processingNewWindowIds.add(windowId);
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const { enabled = true } = await chrome.storage.sync.get({ enabled: true });
+    if (!enabled) return;
+
+    const win = await chrome.windows.get(windowId);
+    if (win.type !== 'normal') return;
+
+    const tabs = await chrome.tabs.query({ windowId });
+    if (tabs.length !== 1) return;
+
+    const tab = tabs[0];
+    if (tab.openerTabId && isInjectableUrl(tab.pendingUrl || tab.url)) {
+      try {
+        const opener = await chrome.tabs.get(tab.openerTabId);
+        const openerWindow = await chrome.windows.get(opener.windowId);
+        if (openerWindow.type === 'popup') return;
+      } catch {
+        // Continue with the ordinary new-window handoff if its opener disappeared.
+      }
+    }
+    const isNewTabPage = /^chrome:\/\/newtab(?:\/|$)/i.test(tab.url || '');
+    if (isNewTabPage) {
+      await chrome.windows.create({
+        url: chrome.runtime.getURL('newtab/newtab.html'),
+        type: 'popup',
+        focused: true
+      });
+      await chrome.windows.remove(windowId);
+    } else if (tab.id) {
+      const popup = await chrome.windows.create({ tabId: tab.id, type: 'popup', focused: true });
+      try {
+        await chrome.windows.remove(windowId);
+      } catch {
+        // Chrome may close an empty source window automatically.
+      }
+      notifyWindowMode(tab.id, popup.id);
+    }
+
+    await broadcastTabsUpdated();
+  } catch {
+    // The window may have been closed or changed while Chrome was creating it.
+  } finally {
+    pendingNewWindowIds.delete(windowId);
+    processingNewWindowIds.delete(windowId);
+  }
+}
+
+chrome.windows.onCreated.addListener((win) => {
+  if (win.type !== 'normal' || typeof win.id !== 'number') return;
+  pendingNewWindowIds.add(win.id);
+  frameNewWindow(win.id);
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (pendingNewWindowIds.has(tab.windowId)) {
+    frameNewWindow(tab.windowId);
+  }
+  if (tab.openerTabId && typeof tab.id === 'number') {
+    popupChildTabs.set(tab.id, tab.openerTabId);
+    adoptPopupChildTab(tab.id);
+    setTimeout(() => adoptPopupChildTab(tab.id), 100);
+  }
+});
 
 function getFaviconFallback(url) {
   if (!url || !/^https?:\/\//i.test(url)) return '';
@@ -350,6 +457,59 @@ function syncPopupTabIntoPool(popupTab) {
     activeEntry.favIconUrl = getFaviconFallback(popupTab.url);
   }
   activeEntry.windowId = popupTab.windowId;
+}
+
+async function adoptPopupChildTab(childTabId) {
+  const openerTabId = popupChildTabs.get(childTabId);
+  if (!openerTabId || popupChildTabsInFlight.has(childTabId)) return;
+  popupChildTabsInFlight.add(childTabId);
+
+  try {
+    const [childTab, openerTab] = await Promise.all([
+      chrome.tabs.get(childTabId),
+      chrome.tabs.get(openerTabId)
+    ]);
+    const url = childTab.pendingUrl || childTab.url || '';
+    if (!isInjectableUrl(url)) return;
+
+    const openerWindow = await chrome.windows.get(openerTab.windowId);
+    if (openerWindow.type !== 'popup') {
+      popupChildTabs.delete(childTabId);
+      return;
+    }
+
+    syncPopupTabIntoPool(openerTab);
+    const virtualId = nextFramelessVirtualId++;
+    framelessTabPool.push({
+      id: virtualId,
+      windowId: openerWindow.id,
+      title: childTab.title || extractDomainLabel(url) || 'New Tab',
+      url,
+      favIconUrl: childTab.favIconUrl || getFaviconFallback(url),
+      pinned: false,
+      audible: false,
+      groupId: -1,
+      groupTitle: null,
+      groupColor: null,
+      isVirtual: true
+    });
+    activeFramelessVirtualId = virtualId;
+
+    await chrome.tabs.update(openerTab.id, { url, active: true });
+    await chrome.windows.update(openerWindow.id, { focused: true });
+    try {
+      await chrome.tabs.remove(childTabId);
+    } catch {
+      // Chrome may already have closed the transient child tab.
+    }
+    notifyWindowMode(openerTab.id, openerWindow.id);
+    await broadcastTabsUpdated();
+    popupChildTabs.delete(childTabId);
+  } catch {
+    // Keep a pending entry until the URL arrives through tabs.onUpdated.
+  } finally {
+    popupChildTabsInFlight.delete(childTabId);
+  }
 }
 
 async function tidyTabsBySubject(windowId) {
@@ -691,10 +851,16 @@ async function broadcastTabsUpdated() {
 }
 
 chrome.tabs.onCreated.addListener(() => { broadcastTabsUpdated(); });
-chrome.tabs.onRemoved.addListener(() => { broadcastTabsUpdated(); });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  popupChildTabs.delete(tabId);
+  broadcastTabsUpdated();
+});
 chrome.tabs.onActivated.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onMoved.addListener(() => { broadcastTabsUpdated(); });
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (popupChildTabs.has(tabId) && (changeInfo.url || changeInfo.status === 'complete')) {
+    adoptPopupChildTab(tabId);
+  }
   if (changeInfo.title || changeInfo.status === 'complete' || changeInfo.pinned !== undefined || changeInfo.favIconUrl) {
     broadcastTabsUpdated();
   }
@@ -715,8 +881,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           } else {
             await ensureTabInjected(activeTab.id, activeTab.url);
           }
+          const activeWindow = await chrome.windows.get(activeTab.windowId);
+          if (activeWindow.type !== 'popup') {
+            await toggleFramelessWindow(activeTab);
+          }
         }
         await broadcastTabsUpdated();
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === 'DIA_DEACTIVATE_ARC') {
+    (async () => {
+      try {
+        await chrome.storage.sync.set({ enabled: false });
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (activeTab?.id) {
+          const activeWindow = await chrome.windows.get(activeTab.windowId);
+          if (activeWindow.type === 'popup') {
+            await toggleFramelessWindow(activeTab);
+          }
+        }
         sendResponse({ ok: true });
       } catch (err) {
         sendResponse({ ok: false, error: String(err) });
@@ -818,6 +1007,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           }
         }
+
+        if (sender.tab?.windowId) {
+          const virtualTarget = framelessTabPool.find((entry) => entry.id === tabId);
+          if (virtualTarget) {
+            await chrome.tabs.update(sender.tab.id, { url: virtualTarget.url, active: true });
+          } else {
+            const targetTab = await chrome.tabs.get(tabId);
+            if (targetTab.windowId !== sender.tab.windowId) {
+              await chrome.tabs.move(targetTab.id, { windowId: sender.tab.windowId, index: -1 });
+            }
+            await chrome.tabs.update(targetTab.id, { active: true });
+          }
+          await chrome.windows.update(sender.tab.windowId, { focused: true });
+          sendResponse({ ok: true, navigatedInCurrentWindow: true });
+          return;
+        }
+
         await chrome.tabs.update(tabId, { active: true });
         if (windowId) {
           await chrome.windows.update(windowId, { focused: true });
@@ -1145,52 +1351,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'DIA_OPEN_EXTENSION') {
     (async () => {
+      if (!message.isSelf) {
+        sendResponse({
+          ok: false,
+          unsupported: true,
+          message: 'Use the extension’s native Chrome toolbar icon to open its popup.'
+        });
+        return;
+      }
+
       try {
-        const { id, optionsUrl, isSelf } = message;
-        let targetUrl = '';
-        if (isSelf) {
-          targetUrl = chrome.runtime.getURL('popup/popup.html');
-        } else if (optionsUrl) {
-          targetUrl = optionsUrl;
-        } else if (id) {
-          targetUrl = `chrome://extensions/?id=${encodeURIComponent(id)}`;
+        if (typeof chrome.action?.openPopup !== 'function') {
+          throw new Error('Chrome action popup API is unavailable');
         }
-        if (!targetUrl) {
-          sendResponse({ ok: false });
-          return;
-        }
-        if (sender.tab?.windowId) {
-          const callerWin = await chrome.windows.get(sender.tab.windowId);
-          if (callerWin.type === 'popup') {
-            syncPopupTabIntoPool(sender.tab);
-            const newId = nextFramelessVirtualId++;
-            framelessTabPool.push({
-              id: newId,
-              windowId: sender.tab.windowId,
-              title: isSelf ? 'Dia Settings' : 'Extension',
-              url: targetUrl,
-              favIconUrl: '',
-              pinned: false,
-              audible: false,
-              groupId: -1,
-              groupTitle: null,
-              groupColor: null,
-              isVirtual: true
-            });
-            activeFramelessVirtualId = newId;
-            await chrome.tabs.update(sender.tab.id, { url: targetUrl });
-            await broadcastTabsUpdated();
-            sendResponse({ ok: true });
-            return;
-          }
-          await chrome.tabs.create({ windowId: callerWin.id, url: targetUrl, active: true });
-          sendResponse({ ok: true });
-          return;
-        }
-        await chrome.tabs.create({ url: targetUrl, active: true });
+        const options = sender.tab?.windowId ? { windowId: sender.tab.windowId } : undefined;
+        await chrome.action.openPopup(options);
         sendResponse({ ok: true });
       } catch (err) {
-        sendResponse({ ok: false, error: String(err) });
+        sendResponse({
+          ok: false,
+          unsupported: true,
+          error: String(err),
+          message: 'Open DiaChrome-Tweaks from its native Chrome toolbar icon.'
+        });
       }
     })();
     return true;
