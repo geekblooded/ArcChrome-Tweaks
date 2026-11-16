@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "DiaChrome-Tweaks",
+  "version": "1.1.0",
+  "description": "Dia & Arc browser experience for official Google Chrome — frameless top-bar hide, hover vertical sidebar, bezel padding, Tidy Tabs, and Dia keyboard shortcuts.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "tabGroups",
+    "sessions",
+    "scripting",
+    "management"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "DiaChrome-Tweaks Settings",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "css": [
+        "styles/dia-frame.css"
+      ],
+      "js": [
+        "content/fullscreen-frame.js",
+        "content/command-palette.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-command-bar": {
+      "suggested_key": {
+        "default": "Ctrl+K",
+        "mac": "Command+K"
+      },
+      "description": "Toggle the Floating Dia Command Bar"
+    },
+    "open-url-bar": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Open Floating Dia Command Bar with current URL selected"
+    },
+    "copy-current-url": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "Copy Current URL with Dia Toast (Dia/Arc shortcut)"
+    },
+    "toggle-frameless-window": {
+      "suggested_key": {
+        "default": "Alt+Shift+F",
+        "mac": "Command+Shift+D"
+      },
+      "description": "Toggle Frameless Dia Window Mode (Hide Chrome Top URL Bar)"
+    }
+  }
+}
