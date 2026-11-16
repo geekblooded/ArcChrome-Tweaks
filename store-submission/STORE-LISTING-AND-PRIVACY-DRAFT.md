@@ -1,6 +1,6 @@
 # Chrome Web Store submission draft
 
-Status: Draft for developer review. Do not submit until the developer account owner confirms the privacy policy URL and completes the Chrome Web Store Data use disclosures.
+Status: Draft for developer review. Confirm final package behavior, screenshots, and all Dashboard privacy declarations before submission.
 
 ## Store listing
 
@@ -8,12 +8,12 @@ Status: Draft for developer review. Do not submit until the developer account ow
 ArcChrome Tweaks
 
 **Short description**  
-Add a Dia and Arc inspired command bar, tab sidebar, workspace styling, and keyboard shortcuts to Chrome.
+Bring an Arc-inspired sidebar, command bar, tab organization, and workspace controls to Chrome.
 
 **Detailed description**  
-ArcChrome Tweaks adds configurable browsing controls to Google Chrome, including an in-page command bar, a tab sidebar, tab search and organization, URL copy actions, and optional page framing. It also includes a custom new-tab workspace and keyboard shortcuts. Features depend on Chrome version, operating system, and the permissions you grant.
+Moving from Arc to Chrome? ArcChrome Tweaks brings familiar browsing patterns to Chrome: a left-side tab sidebar, command bar, searchable tabs, tab grouping, URL actions, page framing, and a custom new-tab workspace. Keyboard shortcuts help you move through these controls. Some features vary by platform and cannot run on Chrome-restricted pages.
 
-The extension reads open-tab titles and URLs to show, search, switch, and organize tabs. Page controls use the current page title and URL for navigation and copy actions. Settings are stored using Chrome Storage Sync and local storage. The extension requests Google favicon images for site and extension icons; Google receives the URL or domain used to request each icon. The extension does not send browsing data to a developer-operated server, based on the current source review.
+The extension reads tab titles and URLs to display, search, navigate, and organize tabs. Its content scripts add the sidebar, command bar, and visual page styling on eligible websites. The reviewed source does not send browsing history or page contents to a developer-operated backend. Google’s favicon service receives a site URL or domain when an icon is requested. Preferences use Chrome Storage Sync and local storage. See the privacy policy for details.
 
 Some pages managed by Chrome, such as Chrome Web Store pages and internal chrome:// pages, do not allow content-script features. Tab organization and shortcut behavior may vary by platform.
 
@@ -24,17 +24,17 @@ Productivity
 English
 
 **Support contact**  
-Developer to provide.
+gaurav.sathe16@gmail.com
 
 **Homepage / support URL**  
-Developer to provide.
+https://geekblooded.github.io/ArcChrome-Tweaks/
 
 **Privacy policy URL**
 https://geekblooded.github.io/ArcChrome-Tweaks/privacy.html
 
 ## Privacy policy draft
 
-This draft must be published at a public URL controlled by the developer and reviewed for accuracy before submission.
+Public policy: https://geekblooded.github.io/ArcChrome-Tweaks/privacy.html
 
 ### ArcChrome Tweaks Privacy Policy
 
@@ -64,7 +64,7 @@ The extension relies on Chrome's extension storage and permission model. Keep Ch
 
 **Changes and contact**
 
-The developer may update this policy when the extension's behavior changes. For privacy questions, contact: **[developer contact email]**.
+The developer may update this policy when the extension's behavior changes. For privacy questions, contact: **gaurav.sathe16@gmail.com**.
 
 **Effective date:** [date of publication]
 
@@ -78,6 +78,34 @@ Use this as a starting point; answer the dashboard's current questions directly 
 - **Data transfers:** Requests to Google's favicon service may include site URLs/domains. Chrome Sync handles synchronized preferences.
 - **Sale / advertising / creditworthiness or lending:** No, based on the reviewed implementation.
 - **Limited use certification:** The developer must confirm the final data handling complies with Chrome Web Store User Data policy before certifying.
+
+## Dashboard answer draft
+
+### Single purpose
+
+ArcChrome Tweaks adapts Chrome’s navigation interface for people familiar with Arc by adding a left-side tab sidebar, command bar, searchable tab switcher, tab organization, and a configurable new-tab workspace.
+
+### Permission justifications
+
+- **`storage`:** Save user-selected interface preferences and cache icons used by the extension UI.
+- **`tabs`:** Read tab titles and URLs to display, search, switch, group, pin, move, create, update, and close tabs as requested through extension controls.
+- **`tabGroups`:** Create and manage tab groups for the tab organization features.
+- **`sessions`:** Restore recently closed tabs or windows when the user invokes restore.
+- **`scripting`:** Add or refresh the extension's sidebar, command bar, and page styling on eligible open tabs when needed.
+- **`management`:** Display the user's installed extensions and related icons in the extension interface.
+- **Host access `<all_urls>`:** Run the sidebar, command bar, keyboard interactions, and optional page framing on eligible websites. Chrome internal pages and other restricted pages are excluded by browser limitations.
+
+### User data declarations (review against dashboard's actual choices)
+
+- Browsing activity: **tab URLs and titles**, used for visible tab display, search, navigation, and organization features.
+- Website content: **page title and current URL** used by visible controls and URL copy/navigation actions; content scripts apply UI and styling. The reviewed source does not collect or transmit page text or form content.
+- Extension inventory: installed extension names/details/icons are read for the extension UI.
+- User settings: saved to Chrome Sync and local extension storage.
+- Third-party transmission: site URL/domain may be sent to Google's favicon service to return a favicon; extension-icon requests may go to the relevant extension homepage. No developer-operated analytics or browsing-data backend was found in the reviewed source.
+- Sale, advertising, creditworthiness, or data brokerage: **No**, based on current implementation review.
+- Certification: only check the Limited Use certification after the developer has verified the uploaded build, privacy policy, and dashboard answers.
+
+These are drafting aids, not preselected dashboard answers. The account owner must check every dashboard field against the exact build and current Chrome Web Store questions.
 
 ## Permissions rationale
 
@@ -93,7 +121,7 @@ Review whether all permissions and `<all_urls>` access remain necessary in the r
 
 ## Submission notes
 
-- Upload `di achrome-tweaks-1.1.0.zip` (actual filename uses no embedded space) from this folder.
+- Upload `arcchrome-tweaks-1.1.0.zip` from this folder.
 - Provide final support contact, homepage/support URL, and public privacy policy URL.
 - Add store screenshots and a promotional tile using the final listing assets.
 - Complete the developer dashboard's current privacy, remote-code, and permission declarations against the exact uploaded ZIP.
