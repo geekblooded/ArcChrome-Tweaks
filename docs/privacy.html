@@ -18,7 +18,7 @@
       <div class="kicker">Clear by design</div>
       <h1>Privacy policy</h1>
       <p class="date"><strong>Effective date:</strong> November 16, 2026</p>
-      <p class="intro">Arc Chrome Tweaks processes browsing information to provide its tab, navigation, and workspace features. This policy describes what the extension accesses and how it is used.</p>
+      <p class="intro">Arc Chrome Tweaks adapts Chrome navigation for people familiar with Arc, including a left-side tab sidebar, command bar, custom new-tab workspace, and page styling. To provide these features, the extension reads and acts on tabs and runs its interface on eligible websites. This policy explains what information is accessed, how it is processed, and when a third party receives a request.</p>
 
       <h2>Information the extension accesses</h2>
       <ul>
@@ -28,18 +28,21 @@
         <li><strong>Your preferences:</strong> Settings are stored using Chrome Storage Sync and Chrome local storage. Some icon data is cached locally.</li>
       </ul>
 
-      <h2>How information is used and shared</h2>
-      <p>Tab and page information is processed by the extension to provide the features described above. Based on the published source code reviewed for this policy, browsing information is not sent to a server operated by the developer.</p>
+      <h2>How information is used</h2>
+      <p>Tab titles and URLs are read to build the sidebar and tab switcher, support tab search, and let you navigate, group, pin, move, or close tabs. The extension may create a frameless popup window or update the active tab when you use navigation features. Page title and URL are used for the in-page URL controls, search, and copy actions. Content scripts add the sidebar, command bar, and visual page framing to eligible pages; they are not used to collect or transmit page text or form contents.</p>
+      <p>These operations are initiated by extension features and run in your browser. In the reviewed source, I found no developer-operated analytics or backend that receives browsing history or page contents. This statement should be rechecked whenever the code or its dependencies change.</p>
       <p>To display website and extension icons, the extension may request images from Google’s favicon service. Those requests include the relevant website URL or domain, which Google receives and handles under its own privacy terms. Chrome may synchronize extension settings through your Google account if Chrome Sync is enabled; that service is governed by Google’s policies and settings.</p>
 
-      <h2>Sale and advertising</h2>
+      <h2>Third-party requests, sale, and advertising</h2>
+      <p>The extension requests favicon images from Google’s favicon service using a site URL or domain so it can show website icons. Google receives those request values. The extension also fetches extension-icon images from their configured homepage URLs where available. These requests are for displaying icons; they are not sent to a developer-operated service. Chrome Sync may store your preferences with your Google account when Sync is enabled.</p>
       <p>The developer does not sell browsing information, use it for advertising, or transfer it to data brokers.</p>
 
       <h2>Retention and deletion</h2>
       <p>Preferences and cached icon data remain in Chrome storage until cleared, removed by the extension, or deleted when you uninstall the extension. Chrome Sync data can also be managed through your Chrome and Google account settings.</p>
 
-      <h2>Permissions</h2>
-      <p>The extension requests access to storage, tabs, tab groups, sessions, scripting, extension management, and eligible websites. These permissions support settings, tab navigation and grouping, restoring recently closed items, adding the interface to pages, and displaying installed extension details. Chrome-restricted pages do not allow extension content scripts.</p>
+      <h2>Permissions and site access</h2>
+      <p>The extension requests <code>storage</code> for preferences and icon cache; <code>tabs</code> and <code>tabGroups</code> to show, search, navigate, and organize tabs; <code>sessions</code> to restore recently closed items; <code>scripting</code> to add its interface and styling to eligible tabs; and <code>management</code> to display installed extension details. It requests access to all website URLs so its sidebar, command bar, shortcuts, and page styling can work across sites. Content scripts cannot run on Chrome Web Store pages or Chrome internal pages, and some browser-controlled pages remain unavailable.</p>
+      <p>Settings may be stored in Chrome Sync and local extension storage. Uninstalling the extension removes its local extension data through Chrome; synced preferences can be managed through Chrome Sync settings.</p>
 
       <h2>Changes and contact</h2>
       <p>This policy may be updated if the extension’s behavior changes. For questions about this policy or the extension, contact the publisher through <a href="https://github.com/geekblooded">GitHub</a>.</p>
