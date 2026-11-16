@@ -3,82 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="DiaChrome Tweaks brings a customizable command bar, tab tools, and workspace styling to Google Chrome.">
-  <title>DiaChrome Tweaks</title>
+  <meta name="theme-color" content="#f6f5f1">
+  <meta name="description" content="Arc Chrome Tweaks brings a calmer, more capable browser workspace to Google Chrome.">
+  <title>Arc Chrome Tweaks — a better space for the web</title>
   <style>
-    :root { color-scheme: light dark; --bg:#101217; --panel:#191c24; --text:#f4f5f7; --muted:#b6bbc6; --accent:#a7c7ff; --line:#303541; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:radial-gradient(ellipse at 80% 0%,#263653 0,transparent 38rem),var(--bg); color:var(--text); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    main { width:min(900px,calc(100% - 36px)); margin:auto; padding:64px 0 80px; }
-    header { padding:44px 0 52px; border-bottom:1px solid var(--line); }
-    .eyebrow { color:var(--accent); font-size:.78rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
-    h1 { margin:.4rem 0 .7rem; font-size:clamp(2.6rem,8vw,5rem); line-height:1.04; letter-spacing:-.055em; }
-    h2 { margin:0 0 16px; font-size:1.75rem; letter-spacing:-.025em; }
-    h3 { margin:24px 0 6px; font-size:1.05rem; }
-    p, li { color:var(--muted); }
-    .lead { max-width:680px; font-size:1.15rem; }
-    nav { display:flex; gap:20px; margin-top:28px; flex-wrap:wrap; }
-    a { color:var(--accent); text-underline-offset:4px; }
-    nav a { padding:10px 15px; border:1px solid #53627c; border-radius:999px; text-decoration:none; }
-    section { padding:42px 0; border-bottom:1px solid var(--line); scroll-margin-top:20px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
-    .card { padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:14px; }
-    .card h3 { margin-top:0; }
-    .updated { font-size:.9rem; }
-    footer { padding-top:24px; color:var(--muted); font-size:.9rem; }
-    @media(max-width:600px) { main { padding-top:32px; } header { padding-top:25px; } }
+    :root{color-scheme:light;--ink:#20211f;--muted:#696b66;--paper:#f6f5f1;--white:#fff;--line:#e4e2dc;--blue:#dce8ff;--blue-ink:#355889;--green:#e5eee3;--lav:#ece7f4;--orange:#f3e7d9}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{color:inherit} .wrap{width:min(1120px,calc(100% - 48px));margin:auto}
+    .topbar{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;background:#f6f5f1ed;backdrop-filter:blur(14px)}.brand{display:flex;align-items:center;gap:11px;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:-.02em}.mark{width:30px;height:30px;border-radius:10px;background:#20211f;color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700}.brand-logo{width:30px;height:30px;object-fit:contain;border-radius:8px}.links{display:flex;align-items:center;gap:25px;font-size:13px;color:#5e605b}.links a{text-decoration:none}.links a:hover{text-decoration:underline;text-underline-offset:4px}.links .privacy-link{padding:0;border:0;border-radius:0;color:inherit}.install-link{display:none!important;align-items:center;gap:8px;padding:9px 14px!important;border-radius:999px!important;background:#20211f;color:#fff!important;font-weight:650}.install-link.visible{display:inline-flex!important}.chrome-mark{width:16px;height:16px;object-fit:contain;background:#fff;border-radius:50%}
+    .hero{padding:92px 0 80px;display:grid;grid-template-columns:1fr .92fr;gap:56px;align-items:center}.kicker{color:#74766f;text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:700}.hero h1{max-width:620px;margin:20px 0 20px;font-size:clamp(48px,7vw,82px);line-height:.99;letter-spacing:-.075em;font-weight:600}.hero h1 span{color:#74766f}.intro{max-width:520px;color:var(--muted);font-size:18px;line-height:1.65}.actions{display:flex;gap:12px;align-items:center;margin-top:30px;flex-wrap:wrap}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 19px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:650}.button.primary{background:#20211f;color:white}.button.secondary{border:1px solid #d2d0c9}.fine{font-size:12px;color:#858780;margin-top:15px}
+    .visual{min-height:380px;position:relative;display:grid;place-items:center}.glow{position:absolute;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,#e9dfd0 0%,#eeeae2 42%,transparent 70%)}.browser{position:relative;width:min(440px,100%);background:#fff;border:1px solid #dddcd6;border-radius:17px;box-shadow:0 30px 75px #27282018;transform:rotate(1.5deg);overflow:hidden}.chrome{height:46px;background:#fbfaf8;border-bottom:1px solid #eeece7;display:flex;align-items:center;padding:0 14px;gap:6px}.dot{width:8px;height:8px;border-radius:50%;background:#d8d6cf}.address{height:25px;border-radius:8px;background:#f0efeb;flex:1;margin-left:9px;color:#92938d;font-size:10px;padding:4px 10px}.mockbody{height:255px;display:grid;grid-template-columns:90px 1fr}.rail{background:#f2f0ed;border-right:1px solid #e8e6e1;padding:12px 8px;display:flex;flex-direction:column;gap:5px}.rail-label{font-size:7px;color:#8b8c85;padding:2px 3px 4px;white-space:nowrap}.rail>i{height:19px;border-radius:6px;background:#e8e6e1;display:flex;align-items:center;padding:0 5px;color:#74766f;font-size:7px;font-style:normal;white-space:nowrap;overflow:hidden}.tab-folder-icon{width:10px;height:10px;flex:0 0 10px;margin-right:4px;color:#7b7d76}.rail .pinned-tabs .pin{width:25px;height:25px;border-radius:8px;justify-content:center;padding:0;background:#fff;border:1px solid #e1dfd9;color:#74766f;filter:grayscale(1)}.rail .pinned-tabs svg{width:16px;height:16px;display:block}.pinned-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+    .statement{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:23px 0;color:#696b66;font-size:13px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.statement strong{color:var(--ink);font-weight:600}.section{padding:88px 0}.section-head{display:flex;justify-content:space-between;gap:36px;align-items:end;margin-bottom:34px}.section h2{font-weight:550;letter-spacing:-.055em;font-size:clamp(34px,4.5vw,53px);line-height:1.05;margin:8px 0 0}.section-head p{max-width:390px;color:var(--muted);margin:0}.features{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.feature{min-height:215px;border-radius:17px;padding:24px;background:var(--white);border:1px solid #eceae5}.feature:nth-child(2){background:var(--blue)}.feature:nth-child(3){background:var(--green)}.feature:nth-child(4){background:var(--lav)}.feature:nth-child(5){background:var(--orange)}.feature:nth-child(6){background:#eeede8}.icon{width:36px;height:36px;border:1px solid #2222;border-radius:12px;display:grid;place-items:center;font-size:15px;margin-bottom:28px}.feature h3{font-size:17px;letter-spacing:-.025em;margin:0 0 7px}.feature p{font-size:13px;color:#666861;margin:0;max-width:280px}.keys{display:flex;gap:5px;align-items:center;margin-top:17px;font-size:10px;color:#60625b}.keys kbd{font:inherit;border:1px solid #bfc0ba;background:#ffffff8a;border-radius:5px;padding:3px 6px}
+    .closing{background:#22231f;color:#f8f7f2;border-radius:20px;padding:48px;display:flex;justify-content:space-between;gap:30px;align-items:center}.closing h2{font-size:clamp(28px,4vw,44px);margin:7px 0 0;letter-spacing:-.05em}.closing p{color:#c0c1ba;max-width:480px;margin:9px 0 0;font-size:14px}.closing-actions{display:flex;gap:10px;flex-wrap:wrap}.closing .button{background:#f8f7f2;color:#22231f;white-space:nowrap}.closing .button.primary{background:#f8f7f2;color:#22231f}.closing .button.secondary{background:transparent;border-color:#696a64;color:#f8f7f2}.github-mark{width:17px;height:17px;object-fit:contain}
+    .privacy{border-top:1px solid var(--line);margin-top:85px;padding:70px 0 80px;scroll-margin-top:24px}.privacy-intro{max-width:660px;color:var(--muted)}.policy{max-width:780px;margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:22px 40px}.policy article{border-top:1px solid var(--line);padding-top:16px}.policy h3{font-size:14px;margin:0 0 7px}.policy p,.policy li{font-size:13px;color:var(--muted);margin:0}.policy ul{margin:0;padding-left:18px}.policy li+li{margin-top:7px}.date{font-size:12px;color:#858780}.footer{border-top:1px solid var(--line);padding:22px 0 34px;display:flex;justify-content:space-between;gap:20px;color:#777972;font-size:12px}.footer a{text-decoration:none}
+    @media(max-width:800px){.hero{grid-template-columns:1fr;padding:70px 0 50px;gap:10px}.visual{min-height:340px}.features{grid-template-columns:repeat(2,1fr)}.section-head{align-items:start;flex-direction:column}.closing{padding:34px;align-items:start;flex-direction:column}}
+    @media(max-width:520px){.wrap{width:min(100% - 32px,1120px)}.topbar{height:66px}.links{gap:13px;font-size:12px}.links a:nth-child(1){display:none}.hero{padding-top:54px}.hero h1{font-size:54px}.intro{font-size:16px}.visual{min-height:300px}.browser{width:96%}.mockbody{height:225px}.float.one{right:0}.float.two{left:0}.statement{font-size:12px}.section{padding:65px 0}.features{grid-template-columns:1fr}.feature{min-height:180px}.policy{grid-template-columns:1fr}.privacy{margin-top:62px;padding-top:55px}.footer{flex-direction:column}.closing{padding:28px}}
   </style>
 </head>
 <body>
-<main>
-  <header>
-    <div class="eyebrow">A Chrome browser extension</div>
-    <h1>DiaChrome Tweaks</h1>
-    <p class="lead">A customizable browser workspace inspired by Dia and Arc, bringing a command bar, tab organization, keyboard shortcuts, and page framing controls to Google Chrome.</p>
-    <nav aria-label="Page sections"><a href="#about">About the extension</a><a href="#privacy">Privacy policy</a></nav>
-  </header>
+  <div class="wrap">
+    <nav class="topbar" aria-label="Main navigation">
+      <a class="brand" href="#top"><img class="brand-logo" src="../icons/icon-48.png" alt=""> Arc Chrome Tweaks</a>
+      <div class="links"><a href="#features">Features</a><a href="https://github.com/geekblooded/ArcChrome-Tweaks">GitHub</a><a class="privacy-link" href="privacy.html">Privacy policy</a><a class="install-link" href="https://chromewebstore.google.com/" aria-label="Install Arc Chrome Tweaks on Chrome"><img class="chrome-mark" src="https://www.google.com/chrome/static/images/chrome-logo.svg" alt="">Install on Chrome</a></div>
+    </nav>
 
-  <section id="about">
-    <h2>Make Chrome feel like your workspace</h2>
-    <p>DiaChrome Tweaks adds an in-page command bar and tab sidebar, quick tab search and grouping, URL copy actions, configurable page framing, and a custom new-tab workspace. Features are controlled through the extension settings and keyboard shortcuts. Availability can vary by operating system and Chrome-restricted pages.</p>
-    <div class="grid">
-      <article class="card"><h3>Find and switch</h3><p>Search open tabs by title or address and move between them from the command bar.</p></article>
-      <article class="card"><h3>Organize tabs</h3><p>Group tabs by website or automatically sort them into topic groups using Chrome’s tab APIs.</p></article>
-      <article class="card"><h3>Shape your workspace</h3><p>Adjust the sidebar, page edges, corner styling, themes, and shortcut behavior.</p></article>
-    </div>
-    <p>Publisher: <a href="https://github.com/geekblooded">geekblooded on GitHub</a>. Source code and project information are available in the <a href="https://github.com/geekblooded/DiaChrome-Tweaks">DiaChrome Tweaks repository</a>.</p>
-  </section>
+    <header class="hero" id="top">
+      <div>
+        <div class="kicker">A more personal Chrome</div>
+        <h1>Your browser,<br><span>your rhythm.</span></h1>
+        <p class="intro">Arc Chrome Tweaks brings a thoughtful command bar, a flexible tab workspace, and small quality-of-life details to Google Chrome.</p>
+        <div class="actions"><a class="button primary" href="https://chromewebstore.google.com/" aria-label="Install Arc Chrome Tweaks on Chrome"><img class="chrome-mark" src="https://www.google.com/chrome/static/images/chrome-logo.svg" alt="">&nbsp; Install on Chrome</a><a class="button secondary" href="#features">See what it does</a></div>
+        <p class="fine">An independent browser extension project. Not affiliated with Google, Arc, or Dia.</p>
+      </div>
+      <div class="visual" aria-label="Illustration of a browser window with pinned tabs at the top of the sidebar and an article page">
+        <div class="glow"></div><div class="browser"><div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><div class="address">insider.com</div></div><div class="mockbody"><div class="rail"><span class="rail-label">PINNED</span><div class="pinned-tabs"><i class="pin gmail" aria-label="Gmail" title="Gmail"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5V19h-3V8.1l-6 4.5-6-4.5V19H3V6.5Zm3 .25 6 4.5 6-4.5V7H6v-.25Z"/><path fill="currentColor" d="M3 7h3v12H3zm15 0h3v12h-3z"/></svg></i><i class="pin spotify" aria-label="Spotify" title="Spotify"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M6.5 9.1c3.7-1.1 8.2-.7 11.4 1.3M7.2 12c3-.9 6.7-.5 9.4 1.1m-8.5 1.8c2.5-.6 5-.3 7 .8" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></i><i class="pin facebook" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.7V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7.3V13h2.8v8h3.4Z"/></svg></i></div><div class="rail-divider"></div><span class="rail-label">TABS</span><i><svg class="tab-folder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="M19.99 8.46c.24.53.36.8.36 1.01a1 1 0 0 1-.6.91c-.19.1-.48.1-1.06.1H6.42c-.62 0-.92 0-1.17.15s-.37.43-.64.98L1.7 17.77l.38-11.31c.02-.82.04-1.23.29-1.5s.65-.32 1.46-.42l1.33-.16h2.33c.36 0 .54 0 .71.06s.3.18.58.41l2.43 2.06c.27.22.4.33.55.4c.16.05.33.06.67.07l6.32.24c.26.01.38.02.5.05a1 1 0 0 1 .52.35c.07.1.12.21.23.44" opacity=".2"/><path d="M11.29 19.59h-3.6c-2.83 0-4.25 0-5.13-.88s-.87-2.3-.87-5.12V6.9a2.4 2.4 0 0 1 2.4-2.4h2.06c.51 0 .77 0 1.02.03a4 4 0 0 1 1.82.71c.2.15.4.32.77.66c.38.35.56.52.77.67a4 4 0 0 0 1.82.7c.25.04.5.04 1.02.04h4.45c1.7 0 3.07 1.37 3.07 3.07M10.8 10.42h6.87c2.67 0 4 0 4.6.87c.6.88.1 2.12-.89 4.6l-.46 1.17c-.49 1.23-.73 1.84-1.24 2.18c-.5.35-1.16.35-2.48.35H7.38c-2.59 0-3.88 0-4.48-.85c-.6-.86-.16-2.07.72-4.51l.42-1.17c.47-1.28.7-1.92 1.21-2.28c.52-.36 1.2-.36 2.56-.36z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>Research notes</i><i><svg class="tab-folder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="M19.99 8.46c.24.53.36.8.36 1.01a1 1 0 0 1-.6.91c-.19.1-.48.1-1.06.1H6.42c-.62 0-.92 0-1.17.15s-.37.43-.64.98L1.7 17.77l.38-11.31c.02-.82.04-1.23.29-1.5s.65-.32 1.46-.42l1.33-.16h2.33c.36 0 .54 0 .71.06s.3.18.58.41l2.43 2.06c.27.22.4.33.55.4c.16.05.33.06.67.07l6.32.24c.26.01.38.02.5.05a1 1 0 0 1 .52.35c.07.1.12.21.23.44" opacity=".2"/><path d="M11.29 19.59h-3.6c-2.83 0-4.25 0-5.13-.88s-.87-2.3-.87-5.12V6.9a2.4 2.4 0 0 1 2.4-2.4h2.06c.51 0 .77 0 1.02.03a4 4 0 0 1 1.82.71c.2.15.4.32.77.66c.38.35.56.52.77.67a4 4 0 0 0 1.82.7c.25.04.5.04 1.02.04h4.45c1.7 0 3.07 1.37 3.07 3.07M10.8 10.42h6.87c2.67 0 4 0 4.6.87c.6.88.1 2.12-.89 4.6l-.46 1.17c-.49 1.23-.73 1.84-1.24 2.18c-.5.35-1.16.35-2.48.35H7.38c-2.59 0-3.88 0-4.48-.85c-.6-.86-.16-2.07.72-4.51l.42-1.17c.47-1.28.7-1.92 1.21-2.28c.52-.36 1.2-.36 2.56-.36z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>Project board</i><i><svg class="tab-folder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="M19.99 8.46c.24.53.36.8.36 1.01a1 1 0 0 1-.6.91c-.19.1-.48.1-1.06.1H6.42c-.62 0-.92 0-1.17.15s-.37.43-.64.98L1.7 17.77l.38-11.31c.02-.82.04-1.23.29-1.5s.65-.32 1.46-.42l1.33-.16h2.33c.36 0 .54 0 .71.06s.3.18.58.41l2.43 2.06c.27.22.4.33.55.4c.16.05.33.06.67.07l6.32.24c.26.01.38.02.5.05a1 1 0 0 1 .52.35c.07.1.12.21.23.44" opacity=".2"/><path d="M11.29 19.59h-3.6c-2.83 0-4.25 0-5.13-.88s-.87-2.3-.87-5.12V6.9a2.4 2.4 0 0 1 2.4-2.4h2.06c.51 0 .77 0 1.02.03a4 4 0 0 1 1.82.71c.2.15.4.32.77.66c.38.35.56.52.77.67a4 4 0 0 0 1.82.7c.25.04.5.04 1.02.04h4.45c1.7 0 3.07 1.37 3.07 3.07M10.8 10.42h6.87c2.67 0 4 0 4.6.87c.6.88.1 2.12-.89 4.6l-.46 1.17c-.49 1.23-.73 1.84-1.24 2.18c-.5.35-1.16.35-2.48.35H7.38c-2.59 0-3.88 0-4.48-.85c-.6-.86-.16-2.07.72-4.51l.42-1.17c.47-1.28.7-1.92 1.21-2.28c.52-.36 1.2-.36 2.56-.36z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>Team updates</i><i><svg class="tab-folder-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="M19.99 8.46c.24.53.36.8.36 1.01a1 1 0 0 1-.6.91c-.19.1-.48.1-1.06.1H6.42c-.62 0-.92 0-1.17.15s-.37.43-.64.98L1.7 17.77l.38-11.31c.02-.82.04-1.23.29-1.5s.65-.32 1.46-.42l1.33-.16h2.33c.36 0 .54 0 .71.06s.3.18.58.41l2.43 2.06c.27.22.4.33.55.4c.16.05.33.06.67.07l6.32.24c.26.01.38.02.5.05a1 1 0 0 1 .52.35c.07.1.12.21.23.44" opacity=".2"/><path d="M11.29 19.59h-3.6c-2.83 0-4.25 0-5.13-.88s-.87-2.3-.87-5.12V6.9a2.4 2.4 0 0 1 2.4-2.4h2.06c.51 0 .77 0 1.02.03a4 4 0 0 1 1.82.71c.2.15.4.32.77.66c.38.35.56.52.77.67a4 4 0 0 0 1.82.7c.25.04.5.04 1.02.04h4.45c1.7 0 3.07 1.37 3.07 3.07M10.8 10.42h6.87c2.67 0 4 0 4.6.87c.6.88.1 2.12-.89 4.6l-.46 1.17c-.49 1.23-.73 1.84-1.24 2.18c-.5.35-1.16.35-2.48.35H7.38c-2.59 0-3.88 0-4.48-.85c-.6-.86-.16-2.07.72-4.51l.42-1.17c.47-1.28.7-1.92 1.21-2.28c.52-.36 1.2-.36 2.56-.36z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>Reading list</i><i>＋ &nbsp; New tab</i></div><div class="pagepane"><div class="page-tabs"><b>Business</b><span>Tech</span><span>Newsletters</span><span>My account</span></div><div class="page-content"><div class="publication">INSIDER</div><div class="page-headline">A new chapter for the modern web</div><div class="page-meta"></div><div class="page-art"></div><div class="page-copy"></div><div class="page-copy short"></div></div></div></div></div><div class="float one">⌘ K &nbsp; Find anything</div><div class="float two">Tabs, arranged your way</div>
+      </div>
+    </header>
 
-  <section id="privacy">
-    <h2>Privacy policy</h2>
-    <p class="updated"><strong>Effective date:</strong> November 16, 2026</p>
-    <p>This policy explains what DiaChrome Tweaks accesses and how that information is used. The extension is designed to process browsing information locally to provide its browser features.</p>
+    <div class="statement"><span><strong>Made for flow.</strong> Built around the way you browse.</span><span>Command bar&nbsp; · &nbsp;Tab tools&nbsp; · &nbsp;Workspace styling</span></div>
 
-    <h3>Information the extension accesses</h3>
-    <ul>
-      <li><strong>Open tab titles and URLs:</strong> Accessed to display and search tabs, switch between them, organize tabs into groups, and provide navigation controls.</li>
-      <li><strong>Current page title and URL:</strong> Used by in-page controls and when you invoke URL copy or navigation features.</li>
-      <li><strong>Installed extension details:</strong> Chrome’s extension-management API is used to show installed extension information and icons in the interface.</li>
-      <li><strong>Your preferences:</strong> Settings are saved with Chrome Storage Sync and Chrome local storage. Some icon data is cached locally.</li>
-    </ul>
+    <section class="section" id="features">
+      <div class="section-head"><div><div class="kicker">A little more room to think</div><h2>Familiar web.<br>Better flow.</h2></div><p>Bring useful controls closer, keep your tabs in order, and make the browser feel a little more like yours.</p></div>
+      <div class="features">
+        <article class="feature"><div class="icon">⌕</div><h3>A command bar for your web</h3><p>Search open tabs, jump to a page, or enter an address from one focused place.</p><div class="keys"><kbd>⌘</kbd><kbd>K</kbd><span>Open command bar</span></div></article>
+        <article class="feature"><div class="icon">▤</div><h3>Tabs at a glance</h3><p>See, search, and switch between open tabs from a compact sidebar.</p><div class="keys"><kbd>⌃</kbd><kbd>Tab</kbd><span>Switch tabs</span></div></article>
+        <article class="feature"><div class="icon">◇</div><h3>Less tab clutter</h3><p>Group tabs by site or organize them into topic groups when you need a reset.</p></article>
+        <article class="feature"><div class="icon">▱</div><h3>Your own workspace</h3><p>Choose the look and feel, adjust page framing, and tune the sidebar to your style.</p></article>
+        <article class="feature"><div class="icon">↗</div><h3>Small things, made easy</h3><p>Copy a page link, move between pages, and reach browser actions with shortcuts.</p></article>
+        <article class="feature"><div class="icon">⌘</div><h3>Built for your browser</h3><p>Works as a Chrome extension and respects Chrome’s restricted pages and controls.</p></article>
+      </div>
+    </section>
 
-    <h3>How information is used and shared</h3>
-    <p>Tab and page information is processed by the extension to provide the features described above. Based on the published source code reviewed for this policy, browsing information is not sent to a server operated by the developer.</p>
-    <p>To display website and extension icons, the extension may request images from Google’s favicon service. Those requests include the relevant website URL or domain, which Google receives and handles under its own privacy terms. Chrome may synchronize extension settings through your Google account if Chrome Sync is enabled; that service is governed by Google’s policies and settings.</p>
+    <section class="closing"><div><div class="kicker">Curious to try it?</div><h2>Make Chrome feel like yours.</h2><p>Explore the project, inspect the source, and try the extension in Chrome.</p></div><div class="closing-actions"><a class="button primary" href="https://chromewebstore.google.com/"><img class="chrome-mark" src="https://www.google.com/chrome/static/images/chrome-logo.svg" alt="">&nbsp; Install on Chrome</a><a class="button secondary" href="https://github.com/geekblooded/ArcChrome-Tweaks"><svg class="github-mark" viewBox="0 0 24 24" role="img" aria-label="GitHub"><path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.08c-3.1.68-3.76-1.31-3.76-1.31-.5-1.29-1.24-1.63-1.24-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 1.7 2.62 1.21 3.26.93.1-.72.39-1.21.71-1.49-2.48-.28-5.08-1.24-5.08-5.52 0-1.22.44-2.21 1.15-2.99-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.54.23 2.68.11 2.96.72.78 1.15 1.77 1.15 2.99 0 4.29-2.61 5.24-5.1 5.51.4.34.76 1.02.76 2.06V22c0 .29.2.63.77.52A11.1 11.1 0 0 0 12 .9Z"/></svg>&nbsp; View on GitHub</a></div></section>
 
-    <h3>Sale and advertising</h3>
-    <p>The developer does not sell browsing information, use it for advertising, or transfer it to data brokers.</p>
-
-    <h3>Retention and deletion</h3>
-    <p>Preferences and cached icon data remain in Chrome storage until cleared, removed by the extension, or deleted when you uninstall the extension. Synced settings can also be managed through your Chrome and Google account settings.</p>
-
-    <h3>Permissions</h3>
-    <p>The extension requests access to storage, tabs, tab groups, sessions, scripting, extension management, and eligible websites. These permissions support settings, tab navigation and grouping, restoring recently closed items, adding the interface to pages, and displaying installed extension details. Chrome-restricted pages do not permit extension content scripts.</p>
-
-    <h3>Changes and contact</h3>
-    <p>This policy may be updated if the extension’s behavior changes. For questions about this policy or the extension, contact the publisher through <a href="https://github.com/geekblooded">GitHub</a>.</p>
-  </section>
-  <footer>© 2026 DiaChrome Tweaks. This page describes the extension’s current implementation and may be updated as the product changes.</footer>
-</main>
+    <footer class="footer"><span>© 2026 Arc Chrome Tweaks</span><span><a href="https://github.com/geekblooded/ArcChrome-Tweaks">Project source</a> &nbsp;·&nbsp; <a href="privacy.html">Privacy policy</a></span></footer>
+  </div>
+  <script>
+    const installAction = document.querySelector('.install-link');
+    const heroAction = document.querySelector('.actions .primary');
+    const updateInstallAction = () => installAction.classList.toggle('visible', window.scrollY > 180);
+    window.addEventListener('scroll', updateInstallAction, { passive: true });
+    updateInstallAction();
+  </script>
 </body>
 </html>
