@@ -1,4 +1,4 @@
-# DiaChrome-Tweaks (`v1.1.0`)
+# ArcChrome-Tweaks (`v1.1.0`)
 
 **Dia & Arc Browser Experience for Official Google Chrome** — engineered for corporate IT / MDM environments where third-party browsers (Arc, Dia, Zen, Brave, Vivaldi) and binary patching are blocked.
 
@@ -10,7 +10,7 @@ Inspired by [`JaceThings/DiaTweaks`](https://github.com/JaceThings/DiaTweaks) an
 
 - **`Dia.app` + `DiaPatches.dylib`:** `DiaTweaks` injects `DiaPatches.dylib` via `LC_LOAD_WEAK_DYLIB` and locally re-signs `Dia.app` with `hardened_runtime: false` (`authorities: ["DiaPatches Local Signing"]`). Its constructor `_DPInit` hooks 37 AppKit `NSView` / `CALayer` classes in `__DATA,__dppatches`.
 - **Official `Google Chrome.app`:** Signed by `Developer ID Application: Google LLC (EQHXZ8M8AV)` with `hardened_runtime: true`, `flags: 0x12a00(kill,restrict,library-validation,runtime)`, and enterprise device-trust entitlements (`EQHXZ8M8AV.com.google.Chrome.devicetrust`). Modifying Chrome's binary invalidates Okta/SSO Device Trust and triggers CrowdStrike Falcon / Hexnode UEM alerts.
-- **Our Solution (`DiaChrome-Tweaks v1.1.0`):** Reconstructs `DiaPatches.dylib`'s features cleanly inside an MV3 Chrome Extension + Chrome's native windowing modes.
+- **Our Solution (`ArcChrome-Tweaks v1.1.0`):** Reconstructs `DiaPatches.dylib`'s features cleanly inside an MV3 Chrome Extension + Chrome's native windowing modes.
 
 ---
 
@@ -66,7 +66,7 @@ Inspired by [`JaceThings/DiaTweaks`](https://github.com/JaceThings/DiaTweaks) an
 
 1. Open `chrome://extensions` in Official Google Chrome.
 2. Enable **Developer mode** (top-right toggle).
-3. Click **Load unpacked** and select this repository folder (or click the **↻ Reload** icon on the `DiaChrome-Tweaks` card if already loaded).
+3. Click **Load unpacked** and select this repository folder (or click the **↻ Reload** icon on the `ArcChrome-Tweaks` card if already loaded).
 4. Optional user-space macOS defaults:
    ```bash
    chmod +x setup.sh

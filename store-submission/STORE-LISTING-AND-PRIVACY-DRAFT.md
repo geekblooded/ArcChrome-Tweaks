@@ -5,13 +5,13 @@ Status: Draft for developer review. Do not submit until the developer account ow
 ## Store listing
 
 **Name**  
-DiaChrome Tweaks
+ArcChrome Tweaks
 
 **Short description**  
 Add a Dia and Arc inspired command bar, tab sidebar, workspace styling, and keyboard shortcuts to Chrome.
 
 **Detailed description**  
-DiaChrome Tweaks adds configurable browsing controls to Google Chrome, including an in-page command bar, a tab sidebar, tab search and organization, URL copy actions, and optional page framing. It also includes a custom new-tab workspace and keyboard shortcuts. Features depend on Chrome version, operating system, and the permissions you grant.
+ArcChrome Tweaks adds configurable browsing controls to Google Chrome, including an in-page command bar, a tab sidebar, tab search and organization, URL copy actions, and optional page framing. It also includes a custom new-tab workspace and keyboard shortcuts. Features depend on Chrome version, operating system, and the permissions you grant.
 
 The extension reads open-tab titles and URLs to show, search, switch, and organize tabs. Page controls use the current page title and URL for navigation and copy actions. Settings are stored using Chrome Storage Sync and local storage. The extension requests Google favicon images for site and extension icons; Google receives the URL or domain used to request each icon. The extension does not send browsing data to a developer-operated server, based on the current source review.
 
@@ -29,13 +29,16 @@ Developer to provide.
 **Homepage / support URL**  
 Developer to provide.
 
+**Privacy policy URL**
+https://geekblooded.github.io/ArcChrome-Tweaks/privacy.html
+
 ## Privacy policy draft
 
 This draft must be published at a public URL controlled by the developer and reviewed for accuracy before submission.
 
-### DiaChrome Tweaks Privacy Policy
+### ArcChrome Tweaks Privacy Policy
 
-DiaChrome Tweaks provides browser interface, tab navigation, and tab organization features in Google Chrome.
+ArcChrome Tweaks provides browser interface, tab navigation, and tab organization features in Google Chrome.
 
 **Information accessed and processed**
 

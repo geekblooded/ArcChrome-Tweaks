@@ -1,5 +1,5 @@
 /**
- * DiaChrome-Tweaks — Dia New Tab Controller (_DPOpenOverBlank parity)
+ * ArcChrome-Tweaks — Dia New Tab Controller (_DPOpenOverBlank parity)
  */
 
 const QUICK_LINKS = [

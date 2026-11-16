@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# DiaChrome-Tweaks — Non-Invasive macOS Setup Helper (`setup.sh` v1.1.0)
+# ArcChrome-Tweaks — Non-Invasive macOS Setup Helper (`setup.sh` v1.1.0)
 #
 # Inspired by JaceThings/DiaTweaks, adapted for corporate IT / MDM environments:
 # - NEVER modifies, patches, or re-signs `/Applications/Google Chrome.app`
@@ -27,7 +27,7 @@ RESET="\033[0m"
 
 print_banner() {
   echo -e "${BOLD}${CYAN}╭──────────────────────────────────────────────────────────────╮${RESET}"
-  echo -e "${BOLD}${CYAN}│  DiaChrome-Tweaks v1.1 — Official Google Chrome Setup (macOS) │${RESET}"
+  echo -e "${BOLD}${CYAN}│  ArcChrome-Tweaks v1.1 — Official Google Chrome Setup (macOS) │${RESET}"
   echo -e "${BOLD}${CYAN}╰──────────────────────────────────────────────────────────────╯${RESET}"
 }
 
@@ -77,12 +77,12 @@ apply_defaults() {
   echo -e "  ${GREEN}✓${RESET} Tuned full-screen / window transition speed (0.08s)"
 
   echo ""
-  echo -e "${BOLD}2. Load the DiaChrome-Tweaks v1.1 Extension:${RESET}"
+  echo -e "${BOLD}2. Load the ArcChrome-Tweaks v1.1 Extension:${RESET}"
   echo -e "  a) Open ${CYAN}chrome://extensions${RESET} in Google Chrome"
   echo -e "  b) Enable ${BOLD}Developer mode${RESET} (top-right toggle)"
   echo -e "  c) Click ${BOLD}Load unpacked${RESET} and select:"
   echo -e "     ${GREEN}$(cd "$(dirname "$0")" && pwd)${RESET}"
-  echo -e "     (Or click the ${BOLD}↻ Reload${RESET} icon on the DiaChrome-Tweaks card if already loaded)"
+  echo -e "     (Or click the ${BOLD}↻ Reload${RESET} icon on the ArcChrome-Tweaks card if already loaded)"
   echo ""
   echo -e "${BOLD}3. Two Ways to Hide the Top URL Bar in Official Chrome:${RESET}"
   echo -e "  • ${BOLD}Option A — Windowed Mode (Frameless Dia Window):${RESET}"
@@ -95,7 +95,7 @@ apply_defaults() {
 
 revert_defaults() {
   print_banner
-  echo -e "${BOLD}Reverting DiaChrome-Tweaks user-space defaults...${RESET}"
+  echo -e "${BOLD}Reverting ArcChrome-Tweaks user-space defaults...${RESET}"
   defaults delete "$CHROME_DOMAIN" AppleEnableSwipeNavigateWithScrolls 2>/dev/null || true
   defaults delete "$CHROME_DOMAIN" NSUserKeyEquivalents 2>/dev/null || true
   defaults delete "$CHROME_DOMAIN" NSWindowResizeTime 2>/dev/null || true

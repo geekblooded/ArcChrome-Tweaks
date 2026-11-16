@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "DiaChrome-Tweaks",
+  "name": "ArcChrome-Tweaks",
   "version": "1.1.0",
   "description": "Dia & Arc browser experience for official Google Chrome — frameless top-bar hide, hover vertical sidebar, bezel padding, Tidy Tabs, and Dia keyboard shortcuts.",
   "permissions": [
@@ -15,7 +15,7 @@
     "<all_urls>"
   ],
   "action": {
-    "default_title": "DiaChrome-Tweaks Settings",
+    "default_title": "ArcChrome-Tweaks Settings",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",

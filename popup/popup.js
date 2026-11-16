@@ -1,5 +1,5 @@
 /**
- * DiaChrome-Tweaks — Popup Settings Controller (Split-View + Iconly + Light/Dark UI)
+ * ArcChrome-Tweaks — Popup Settings Controller (Split-View + Iconly + Light/Dark UI)
  */
 
 const DEFAULT_SETTINGS = {

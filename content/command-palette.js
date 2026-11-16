@@ -1,5 +1,5 @@
 /**
- * DiaChrome-Tweaks — Floating Dia Command Bar, Recreated Hover Vertical Sidebar,
+ * ArcChrome-Tweaks — Floating Dia Command Bar, Recreated Hover Vertical Sidebar,
  * Top-Edge Hover URL Pill, Copy URL Toast & Dia Keyboard Shortcut Engine (v1.1.0+)
  *
  * Upgraded with:
@@ -1914,7 +1914,7 @@
           const btn = document.createElement('button');
           btn.className = 'dia-top-ext-btn';
           btn.title = ext.isSelf
-            ? 'Open DiaChrome-Tweaks popup'
+            ? 'Open ArcChrome-Tweaks popup'
             : `${ext.fullName || ext.name} — open from Chrome’s toolbar`;
           const img = document.createElement('img');
           img.src = ext.iconDataUrl;

@@ -1,5 +1,5 @@
 /**
- * DiaChrome-Tweaks — Background Service Worker (Manifest V3)
+ * ArcChrome-Tweaks — Background Service Worker (Manifest V3)
  *
  * Powers:
  * 1. Default settings initialization & migration (`DiaPatches.dylib` parity)
@@ -95,7 +95,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.sync.set(nextSettings);
     await chrome.storage.local.set(nextSettings);
   } catch (err) {
-    console.error('[DiaChrome-Tweaks] Failed to initialize settings:', err);
+    console.error('[ArcChrome-Tweaks] Failed to initialize settings:', err);
   }
 
   await injectIntoAllOpenTabs();
@@ -794,7 +794,7 @@ chrome.commands.onCommand.addListener(async (command) => {
       await chrome.tabs.create({ url: 'chrome://newtab' });
     }
   } catch (err) {
-    console.error('[DiaChrome-Tweaks] Command error:', err);
+    console.error('[ArcChrome-Tweaks] Command error:', err);
   }
 });
 
@@ -1372,7 +1372,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           ok: false,
           unsupported: true,
           error: String(err),
-          message: 'Open DiaChrome-Tweaks from its native Chrome toolbar icon.'
+          message: 'Open ArcChrome-Tweaks from its native Chrome toolbar icon.'
         });
       }
     })();
