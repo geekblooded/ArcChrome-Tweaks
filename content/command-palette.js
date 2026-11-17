@@ -10,7 +10,7 @@
  */
 
 (() => {
-  const SCRIPT_VERSION = '1.2.1-multi-tab-workspace';
+  const SCRIPT_VERSION = '1.3.0-real-tabs-and-sidebar-dnd';
   if (window.__workspaceCommandVersion === SCRIPT_VERSION) return;
 
   if (typeof window.__workspaceCommandCleanup === 'function') {
@@ -157,6 +157,8 @@
   let sidebarUrlLabelEl = null;
   let sidebarPinBtnEl = null;
   let sidebarTabCountEl = null;
+  let sbSectionLabelEl = null;
+  let workspaceName = 'Workspace';
 
   let topHoverBarEl = null;
   let topHoverUrlEl = null;
@@ -195,6 +197,85 @@
     } catch {
       return window.location.hostname || 'New Tab';
     }
+  }
+
+  function setWorkspaceName(value) {
+    workspaceName = String(value || '').trim().slice(0, 40) || 'Workspace';
+    if (sbSectionLabelEl && sbSectionLabelEl.isConnected) {
+      sbSectionLabelEl.textContent = workspaceName;
+    }
+  }
+
+  function beginWorkspaceRename() {
+    if (!sbSectionLabelEl || !sbSectionLabelEl.isConnected) return;
+    const input = document.createElement('input');
+    input.className = 'dia-sb-workspace-input';
+    input.type = 'text';
+    input.maxLength = 40;
+    input.value = workspaceName;
+    input.setAttribute('aria-label', 'Workspace name');
+    sbSectionLabelEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let finished = false;
+    const finish = async (save) => {
+      if (finished) return;
+      finished = true;
+      const value = save ? input.value : workspaceName;
+      setWorkspaceName(value);
+      input.replaceWith(sbSectionLabelEl);
+      if (save) {
+        try {
+          await chrome.storage.sync.set({ workspaceName });
+        } catch {
+          // The in-memory label remains usable if sync storage is unavailable.
+        }
+      }
+    };
+
+    input.addEventListener('blur', () => finish(true), { once: true });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(false);
+      }
+    });
+  }
+
+  function getDraggedTabId(event) {
+    const value = event.dataTransfer?.getData('application/x-arcchrome-tab-id');
+    const id = Number(value);
+    return Number.isInteger(id) ? id : null;
+  }
+
+  function getDraggedFolderGroupId(event) {
+    const value = event.dataTransfer?.getData('application/x-arcchrome-folder-group-id');
+    const id = Number(value);
+    return Number.isInteger(id) && id >= 0 ? id : null;
+  }
+
+  function hasDragType(event, type) {
+    return Array.from(event.dataTransfer?.types || []).includes(type);
+  }
+
+  async function moveSidebarTab(tabId, folderGroupId = -1, windowId, index) {
+    const result = await chrome.runtime.sendMessage({
+      type: 'DIA_MOVE_TAB_TO_FOLDER',
+      tabId,
+      folderGroupId,
+      windowId,
+      index
+    });
+    if (!result?.ok) showToast('Could not move tab.');
+  }
+
+  async function moveSidebarFolder(groupId, parentGroupId = -1) {
+    const result = await chrome.runtime.sendMessage({ type: 'DIA_MOVE_FOLDER', groupId, parentGroupId });
+    if (!result?.ok) showToast(result?.error || 'Could not move folder.');
   }
 
   function buildShadowDOM() {
@@ -507,7 +588,7 @@
       .dia-item-close {
         width: 22px;
         height: 22px;
-        border-radius: 6px;
+        border-radius: 0;
         border: none;
         background: transparent;
         color: var(--text-muted);
@@ -517,12 +598,12 @@
         cursor: pointer;
         flex-shrink: 0;
         opacity: 0;
-        transition: opacity 100ms ease, background 100ms ease, color 100ms ease;
+        transition: opacity 100ms ease;
       }
 
       .dia-item-close svg {
-        width: 13px;
-        height: 13px;
+        width: 24px;
+        height: 24px;
       }
 
       .dia-item:hover .dia-item-close,
@@ -531,8 +612,8 @@
       }
 
       .dia-item-close:hover {
-        background: rgba(239, 68, 68, 0.18);
-        color: #ef4444;
+        background: transparent;
+        color: var(--text-muted);
       }
 
       .dia-footer {
@@ -840,6 +921,21 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        cursor: text;
+        border-radius: 4px;
+        outline-offset: 3px;
+      }
+
+      .dia-sb-workspace-input {
+        width: min(140px, 55%);
+        min-width: 60px;
+        padding: 2px 4px;
+        border: 1px solid var(--accent-border);
+        border-radius: 5px;
+        outline: none;
+        background: var(--item-bg);
+        color: var(--text-primary);
+        font: inherit;
       }
 
       .dia-sb-tidy-btn {
@@ -875,7 +971,7 @@
         overflow: hidden;
         white-space: nowrap;
         margin-left: 0;
-        color: var(--accent-text);
+        color: inherit;
         transition:
           max-width 190ms cubic-bezier(0.16, 1, 0.3, 1),
           opacity 150ms ease,
@@ -991,6 +1087,22 @@
         overflow: hidden;
       }
 
+      .dia-sb-folder.is-nested {
+        margin-left: 13px;
+        border-left: 1px solid var(--surface-divider);
+        border-radius: 0 9px 9px 0;
+      }
+
+      .dia-sb-folder.is-drop-target .dia-sb-group-header,
+      .dia-sb-tab.is-drop-target {
+        background: var(--accent-soft);
+        color: var(--text-primary);
+      }
+
+      .dia-sb-tab.is-dragging {
+        opacity: 0.45;
+      }
+
       .dia-sb-group-header {
         display: flex;
         align-items: center;
@@ -1100,7 +1212,7 @@
       .dia-sb-tab-close {
         width: 20px;
         height: 20px;
-        border-radius: 6px;
+        border-radius: 0;
         border: none;
         background: transparent;
         color: var(--text-muted);
@@ -1109,12 +1221,12 @@
         justify-content: center;
         cursor: pointer;
         opacity: 0;
-        transition: opacity 100ms ease, background 100ms ease, color 100ms ease;
+        transition: opacity 100ms ease;
       }
 
       .dia-sb-tab-close svg {
-        width: 13px;
-        height: 13px;
+        width: 24px;
+        height: 24px;
       }
 
       .dia-sb-tab:hover .dia-sb-tab-close {
@@ -1122,8 +1234,8 @@
       }
 
       .dia-sb-tab-close:hover {
-        background: rgba(239, 68, 68, 0.18);
-        color: #ef4444;
+        background: transparent;
+        color: var(--text-muted);
       }
 
       /* Bottom Utility Bar (macOS Arc Bottom Bar with Archive, Extensions Stack, and +) */
@@ -1501,22 +1613,44 @@
     const sbTools = document.createElement('div');
     sbTools.className = 'dia-sb-tools';
 
-    const sbSectionLabel = document.createElement('span');
-    sbSectionLabel.className = 'dia-sb-section-label';
-    sbSectionLabel.textContent = 'Workspace';
+    sbSectionLabelEl = document.createElement('span');
+    sbSectionLabelEl.className = 'dia-sb-section-label';
+    sbSectionLabelEl.textContent = workspaceName;
+    sbSectionLabelEl.title = 'Rename workspace';
+    sbSectionLabelEl.tabIndex = 0;
+    sbSectionLabelEl.setAttribute('role', 'button');
+    sbSectionLabelEl.setAttribute('aria-label', 'Rename workspace');
+    sbSectionLabelEl.addEventListener('click', beginWorkspaceRename);
+    sbSectionLabelEl.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        beginWorkspaceRename();
+      }
+    });
 
     const tidyBtn = document.createElement('button');
     tidyBtn.className = 'dia-sb-tidy-btn';
-    tidyBtn.title = 'Smartly organize open tabs into intent & project folders (⌥⌘T)';
-    tidyBtn.innerHTML = `${ICONLY.folderAi}<span class="dia-tidy-label">Tidy up</span>`;
+    tidyBtn.title = 'Organize open tabs into folders (⌥⌘T)';
+    tidyBtn.innerHTML = `${ICONLY.folderAi}<span class="dia-tidy-label">Organize</span>`;
     tidyBtn.addEventListener('click', () => runTidyTabs());
 
-    sbTools.appendChild(sbSectionLabel);
+    sbTools.appendChild(sbSectionLabelEl);
     sbTools.appendChild(tidyBtn);
 
     // Smart Folders section (above the horizontal divider line, matching macOS Arc)
     sidebarFoldersListEl = document.createElement('div');
     sidebarFoldersListEl.className = 'dia-sb-folders-list';
+    sidebarFoldersListEl.addEventListener('dragover', (event) => {
+      if (hasDragType(event, 'application/x-arcchrome-folder-group-id')) event.preventDefault();
+    });
+    sidebarFoldersListEl.addEventListener('drop', async (event) => {
+      if (event.target.closest('.dia-sb-folder')) return;
+      const groupId = getDraggedFolderGroupId(event);
+      if (groupId === null) return;
+      event.preventDefault();
+      await moveSidebarFolder(groupId, -1);
+      await refreshSidebarTabs();
+    });
 
     // Subtle 1px horizontal divider separating Space/Folders from "+ New Tab" & Open Tabs
     const sbDivider = document.createElement('div');
@@ -1539,6 +1673,17 @@
     // Open Tabs List
     sidebarTabsListEl = document.createElement('div');
     sidebarTabsListEl.className = 'dia-sb-tabs';
+    sidebarTabsListEl.addEventListener('dragover', (event) => {
+      if (getDraggedTabId(event) !== null) event.preventDefault();
+    });
+    sidebarTabsListEl.addEventListener('drop', async (event) => {
+      if (event.target.closest('.dia-sb-tab, .dia-sb-folder')) return;
+      const tabId = getDraggedTabId(event);
+      if (tabId === null) return;
+      event.preventDefault();
+      await moveSidebarTab(tabId, -1);
+      await refreshSidebarTabs();
+    });
 
     // Bottom Utility Bar: Downloads and Theme Palette on the left, New Tab on the right.
     const sbFooter = document.createElement('div');
@@ -2128,6 +2273,29 @@
       const isCurrent = activeTabId ? tab.id === activeTabId : Boolean(tab.active);
       row.className = `dia-sb-tab${isCurrent ? ' is-active' : ''}`;
       row.title = `${tab.title}\n${tab.url}`;
+      row.draggable = true;
+      row.addEventListener('dragstart', (event) => {
+        event.dataTransfer?.setData('application/x-arcchrome-tab-id', String(tab.id));
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+        row.classList.add('is-dragging');
+      });
+      row.addEventListener('dragend', () => row.classList.remove('is-dragging'));
+      row.addEventListener('dragover', (event) => {
+        if (hasDragType(event, 'application/x-arcchrome-tab-id')) {
+          event.preventDefault();
+          row.classList.add('is-drop-target');
+        }
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('is-drop-target'));
+      row.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        row.classList.remove('is-drop-target');
+        const draggedId = getDraggedTabId(event);
+        if (draggedId === null || draggedId === tab.id) return;
+        await moveSidebarTab(draggedId, tab.groupId ?? -1, tab.windowId, tab.index);
+        await refreshSidebarTabs();
+      });
 
       const fav = document.createElement('div');
       fav.className = 'dia-sb-tab-fav';
@@ -2175,26 +2343,55 @@
     const looseTabs = [];
     for (const tab of unpinnedTabs) {
       if (tab.groupTitle) {
-        if (!folderBuckets.has(tab.groupTitle)) {
-          folderBuckets.set(tab.groupTitle, {
+        const folderKey = tab.groupId >= 0 ? `group-${tab.groupId}` : `name-${tab.groupTitle}`;
+        if (!folderBuckets.has(folderKey)) {
+          folderBuckets.set(folderKey, {
             title: tab.groupTitle,
             color: tab.groupColor,
+            groupId: tab.groupId ?? -1,
+            windowId: tab.windowId,
             tabs: []
           });
         }
-        folderBuckets.get(tab.groupTitle).tabs.push(tab);
+        folderBuckets.get(folderKey).tabs.push(tab);
       } else {
         looseTabs.push(tab);
       }
     }
 
-    for (const [folderTitle, bucket] of folderBuckets.entries()) {
+    const folderRoots = [];
+    const folderBucketsById = new Map();
+    for (const [folderKey, bucket] of folderBuckets.entries()) {
+      bucket.key = folderKey;
+      bucket.parentGroupId = Number(bucket.tabs[0]?.parentGroupId ?? -1);
+      bucket.children = [];
+      folderBucketsById.set(bucket.groupId, bucket);
+    }
+    for (const bucket of folderBuckets.values()) {
+      const parent = folderBucketsById.get(bucket.parentGroupId);
+      if (parent && parent.groupId !== bucket.groupId) parent.children.push(bucket);
+      else folderRoots.push(bucket);
+    }
+
+    function renderFolder(bucket, target) {
+      const folderKey = bucket.key;
+      const folderTitle = bucket.title;
       const folderWrap = document.createElement('div');
-      const isCollapsed = collapsedFolders.has(folderTitle);
-      folderWrap.className = `dia-sb-folder${isCollapsed ? ' is-collapsed' : ''}`;
+      const isCollapsed = collapsedFolders.has(folderKey);
+      folderWrap.className = `dia-sb-folder${bucket.parentGroupId >= 0 ? ' is-nested' : ''}${isCollapsed ? ' is-collapsed' : ''}`;
+      folderWrap.dataset.groupId = String(bucket.groupId);
 
       const groupHdr = document.createElement('div');
       groupHdr.className = 'dia-sb-group-header';
+      groupHdr.draggable = bucket.groupId >= 0;
+      groupHdr.setAttribute('role', 'button');
+      groupHdr.setAttribute('tabindex', '0');
+      groupHdr.setAttribute('aria-expanded', String(!isCollapsed));
+      groupHdr.addEventListener('dragstart', (event) => {
+        if (bucket.groupId < 0) return;
+        event.dataTransfer?.setData('application/x-arcchrome-folder-group-id', String(bucket.groupId));
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      });
 
       const folderIcon = document.createElement('span');
       folderIcon.className = 'dia-sb-folder-icon';
@@ -2213,13 +2410,47 @@
       groupHdr.appendChild(countSpan);
 
       groupHdr.addEventListener('click', () => {
-        if (collapsedFolders.has(folderTitle)) {
-          collapsedFolders.delete(folderTitle);
+        if (collapsedFolders.has(folderKey)) {
+          collapsedFolders.delete(folderKey);
           folderWrap.classList.remove('is-collapsed');
+          groupHdr.setAttribute('aria-expanded', 'true');
         } else {
-          collapsedFolders.add(folderTitle);
+          collapsedFolders.add(folderKey);
           folderWrap.classList.add('is-collapsed');
+          groupHdr.setAttribute('aria-expanded', 'false');
         }
+      });
+      groupHdr.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          groupHdr.click();
+        }
+      });
+
+      folderWrap.addEventListener('dragover', (event) => {
+        if (hasDragType(event, 'application/x-arcchrome-tab-id') ||
+            hasDragType(event, 'application/x-arcchrome-folder-group-id')) {
+          event.preventDefault();
+          folderWrap.classList.add('is-drop-target');
+        }
+      });
+      folderWrap.addEventListener('dragleave', (event) => {
+        if (!folderWrap.contains(event.relatedTarget)) folderWrap.classList.remove('is-drop-target');
+      });
+      folderWrap.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        folderWrap.classList.remove('is-drop-target');
+        const draggedId = getDraggedTabId(event);
+        const draggedFolderId = getDraggedFolderGroupId(event);
+        if (draggedFolderId !== null) {
+          await moveSidebarFolder(draggedFolderId, bucket.groupId);
+        } else if (draggedId !== null && bucket.groupId >= 0) {
+          await moveSidebarTab(draggedId, bucket.groupId, bucket.windowId);
+        } else {
+          return;
+        }
+        await refreshSidebarTabs();
       });
 
       const itemsContainer = document.createElement('div');
@@ -2227,15 +2458,14 @@
       for (const tab of bucket.tabs) {
         itemsContainer.appendChild(createTabRowElement(tab));
       }
+      for (const child of bucket.children) renderFolder(child, itemsContainer);
 
       folderWrap.appendChild(groupHdr);
       folderWrap.appendChild(itemsContainer);
-      if (sidebarFoldersListEl) {
-        sidebarFoldersListEl.appendChild(folderWrap);
-      } else {
-        sidebarTabsListEl.appendChild(folderWrap);
-      }
+      target.appendChild(folderWrap);
     }
+
+    for (const bucket of folderRoots) renderFolder(bucket, sidebarFoldersListEl || sidebarTabsListEl);
 
     for (const tab of looseTabs) {
       sidebarTabsListEl.appendChild(createTabRowElement(tab));
@@ -2538,7 +2768,8 @@
       } else if (chosen.kind === 'action-fullscreen') {
         await chrome.runtime.sendMessage({ type: 'DIA_TOGGLE_FULLSCREEN' });
       } else if (chosen.kind === 'url' || chosen.kind === 'search') {
-        const shouldOpenInNewTab = openInNewTab || currentPaletteMode !== 'url';
+        const isNewTabDocument = location.pathname.endsWith('/newtab/newtab.html');
+        const shouldOpenInNewTab = openInNewTab || (currentPaletteMode !== 'url' && !isNewTabDocument);
         await chrome.runtime.sendMessage({
           type: 'DIA_NAVIGATE',
           url: chosen.url,
@@ -2659,7 +2890,7 @@
     chrome.runtime.sendMessage({
       type: 'DIA_NAVIGATE',
       url: link.href,
-      newTab: false
+      newTab: true
     }).catch(() => {
       window.location.assign(link.href);
     });
@@ -2761,6 +2992,9 @@
   function onStorageChanged(changes, area) {
     if (area !== 'sync' && area !== 'local') return;
     for (const [key, change] of Object.entries(changes)) {
+      if (key === 'workspaceName' && change.newValue !== undefined) {
+        setWorkspaceName(change.newValue);
+      }
       if (key in settings && change.newValue !== undefined) {
         settings[key] = change.newValue;
       }
@@ -2832,6 +3066,13 @@
       isSidebarPinned = settings.sidebarMode === 'pinned';
     } catch {
       // Keep defaults
+    }
+
+    try {
+      const savedWorkspace = await chrome.storage.sync.get({ workspaceName: 'Workspace' });
+      setWorkspaceName(savedWorkspace.workspaceName);
+    } catch {
+      setWorkspaceName('Workspace');
     }
 
     hostEl.style.display = settings.enabled === false ? 'none' : '';

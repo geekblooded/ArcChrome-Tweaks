@@ -41,6 +41,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const TAB_GROUP_COLORS = ['blue', 'purple', 'cyan', 'green', 'yellow', 'orange', 'pink', 'red', 'grey'];
+const FOLDER_PARENT_KEY = 'arcchromeFolderParents';
 
 function isInjectableUrl(url) {
   if (!url) return false;
@@ -140,8 +141,6 @@ async function toggleFramelessWindow(sourceTab) {
       if (!normalWin) {
         normalWin = await chrome.windows.create({ tabId: tab.id, type: 'normal', focused: true });
         await chrome.windows.remove(win.id);
-        framelessTabPool = framelessTabPool.filter((entry) => entry.windowId !== win.id);
-        activeFramelessVirtualId = null;
         notifyWindowMode(tab.id, normalWin.id);
         return { ok: true, mode: 'normal', windowId: normalWin.id };
       }
@@ -150,8 +149,6 @@ async function toggleFramelessWindow(sourceTab) {
         await chrome.tabs.update(tab.id, { active: true });
         await chrome.windows.remove(win.id);
         await chrome.windows.update(normalWin.id, { focused: true });
-        framelessTabPool = framelessTabPool.filter((entry) => entry.windowId !== win.id);
-        activeFramelessVirtualId = null;
         notifyWindowMode(tab.id, normalWin.id);
         return { ok: true, mode: 'normal' };
       }
@@ -330,11 +327,6 @@ async function groupTabsByDomain(windowId) {
 }
 
 const customTabFolderAssignment = new Map();
-
-// Multi-tab workspace pool for Frameless Popup Windows (so opening a New Tab inside a frameless window adds a new tab in the Sidebar instead of overwriting the existing tab or spawning a new window)
-let framelessTabPool = [];
-let activeFramelessVirtualId = null;
-let nextFramelessVirtualId = 900001;
 const popupChildTabs = new Map();
 const popupChildTabsInFlight = new Set();
 
@@ -371,12 +363,9 @@ async function frameNewWindow(windowId) {
     }
     const isNewTabPage = /^chrome:\/\/newtab(?:\/|$)/i.test(tab.url || '');
     if (isNewTabPage) {
-      await chrome.windows.create({
-        url: chrome.runtime.getURL('newtab/newtab.html'),
-        type: 'popup',
-        focused: true
-      });
-      await chrome.windows.remove(windowId);
+      // Keep Chrome's native new-window/new-tab surface in its original
+      // window; replacing it with a popup can produce duplicate windows.
+      return;
     } else if (tab.id) {
       const popup = await chrome.windows.create({ tabId: tab.id, type: 'popup', focused: true });
       try {
@@ -418,47 +407,6 @@ function getFaviconFallback(url) {
   return `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}`;
 }
 
-function syncPopupTabIntoPool(popupTab) {
-  if (!popupTab || !popupTab.id) return;
-  if (framelessTabPool.length === 0) {
-    const id = nextFramelessVirtualId++;
-    framelessTabPool.push({
-      id,
-      windowId: popupTab.windowId,
-      title: popupTab.title || extractDomainLabel(popupTab.url) || 'New Tab',
-      url: popupTab.url || '',
-      favIconUrl: popupTab.favIconUrl || getFaviconFallback(popupTab.url),
-      pinned: Boolean(popupTab.pinned),
-      audible: Boolean(popupTab.audible),
-      groupId: -1,
-      groupTitle: null,
-      groupColor: null,
-      isVirtual: true
-    });
-    activeFramelessVirtualId = id;
-    return;
-  }
-
-  let activeEntry = framelessTabPool.find((e) => e.id === activeFramelessVirtualId);
-  if (!activeEntry) {
-    activeEntry = framelessTabPool[framelessTabPool.length - 1];
-    activeFramelessVirtualId = activeEntry.id;
-  }
-
-  if (popupTab.url) {
-    activeEntry.url = popupTab.url;
-  }
-  if (popupTab.title) {
-    activeEntry.title = popupTab.title;
-  }
-  if (popupTab.favIconUrl) {
-    activeEntry.favIconUrl = popupTab.favIconUrl;
-  } else if (popupTab.url) {
-    activeEntry.favIconUrl = getFaviconFallback(popupTab.url);
-  }
-  activeEntry.windowId = popupTab.windowId;
-}
-
 async function adoptPopupChildTab(childTabId) {
   const openerTabId = popupChildTabs.get(childTabId);
   if (!openerTabId || popupChildTabsInFlight.has(childTabId)) return;
@@ -478,31 +426,12 @@ async function adoptPopupChildTab(childTabId) {
       return;
     }
 
-    syncPopupTabIntoPool(openerTab);
-    const virtualId = nextFramelessVirtualId++;
-    framelessTabPool.push({
-      id: virtualId,
-      windowId: openerWindow.id,
-      title: childTab.title || extractDomainLabel(url) || 'New Tab',
-      url,
-      favIconUrl: childTab.favIconUrl || getFaviconFallback(url),
-      pinned: false,
-      audible: false,
-      groupId: -1,
-      groupTitle: null,
-      groupColor: null,
-      isVirtual: true
-    });
-    activeFramelessVirtualId = virtualId;
-
-    await chrome.tabs.update(openerTab.id, { url, active: true });
-    await chrome.windows.update(openerWindow.id, { focused: true });
-    try {
-      await chrome.tabs.remove(childTabId);
-    } catch {
-      // Chrome may already have closed the transient child tab.
+    if (childTab.windowId !== openerWindow.id) {
+      await chrome.tabs.move(childTabId, { windowId: openerWindow.id, index: -1 });
     }
-    notifyWindowMode(openerTab.id, openerWindow.id);
+    await chrome.tabs.update(childTabId, { active: true });
+    await chrome.windows.update(openerWindow.id, { focused: true });
+    notifyWindowMode(childTabId, openerWindow.id);
     await broadcastTabsUpdated();
     popupChildTabs.delete(childTabId);
   } catch {
@@ -514,7 +443,7 @@ async function adoptPopupChildTab(childTabId) {
 
 async function tidyTabsBySubject(windowId) {
   try {
-    const allTabs = await getEnrichedOpenTabs();
+    const allTabs = (await getEnrichedOpenTabs()).filter((tab) => !windowId || tab.windowId === windowId);
     const unpinned = allTabs.filter((t) => !t.pinned && t.id);
     if (unpinned.length === 0) {
       return { ok: true, groupsCreated: 0, tabsGrouped: 0, message: 'There are no loose tabs to tidy.' };
@@ -537,20 +466,13 @@ async function tidyTabsBySubject(windowId) {
       const color = TAB_GROUP_COLORS[colorIdx % TAB_GROUP_COLORS.length];
       colorIdx++;
 
-      // Store smart folder assignment for both real tabs and frameless virtual tabs
       for (const tid of tabIds) {
         customTabFolderAssignment.set(tid, { title: subject, color });
-        const vEntry = framelessTabPool.find((e) => e.id === tid);
-        if (vEntry) {
-          vEntry.groupTitle = subject;
-          vEntry.groupColor = color;
-        }
       }
 
-      const realTabIds = tabIds.filter((tid) => tid < 900000);
-      if (realTabIds.length > 0) {
+      if (tabIds.length > 0) {
         try {
-          const groupId = await chrome.tabs.group({ tabIds: realTabIds });
+          const groupId = await chrome.tabs.group({ tabIds });
           if (chrome.tabGroups && typeof chrome.tabGroups.update === 'function') {
             await chrome.tabGroups.update(groupId, {
               title: subject,
@@ -578,9 +500,8 @@ async function tidyTabsBySubject(windowId) {
 
 async function getEnrichedOpenTabs() {
   const tabs = await chrome.tabs.query({});
-  const windows = await chrome.windows.getAll({});
-  const popupWinIds = new Set(windows.filter((w) => w.type === 'popup').map((w) => w.id));
-
+  const storedFolders = await chrome.storage.local.get({ [FOLDER_PARENT_KEY]: {} });
+  const folderParents = storedFolders[FOLDER_PARENT_KEY] || {};
   const groupMap = new Map();
   if (chrome.tabGroups && typeof chrome.tabGroups.query === 'function') {
     try {
@@ -596,10 +517,6 @@ async function getEnrichedOpenTabs() {
   const enriched = [];
 
   for (const t of tabs) {
-    if (popupWinIds.has(t.windowId)) {
-      syncPopupTabIntoPool(t);
-      continue;
-    }
     const groupInfo =
       t.groupId && t.groupId > -1
         ? groupMap.get(t.groupId)
@@ -607,36 +524,18 @@ async function getEnrichedOpenTabs() {
     enriched.push({
       id: t.id,
       windowId: t.windowId,
+      index: t.index,
       title: t.title || 'Untitled',
       url: t.url || '',
       favIconUrl: t.favIconUrl || getFaviconFallback(t.url),
-      active: Boolean(t.active) && popupWinIds.size === 0,
+      active: Boolean(t.active),
       pinned: Boolean(t.pinned),
       audible: Boolean(t.audible),
       groupId: t.groupId ?? -1,
       groupTitle: groupInfo ? groupInfo.title : null,
-      groupColor: groupInfo ? groupInfo.color : null
+      groupColor: groupInfo ? groupInfo.color : null,
+      parentGroupId: t.groupId >= 0 ? Number(folderParents[String(t.groupId)] ?? -1) : -1
     });
-  }
-
-  if (popupWinIds.size > 0 && framelessTabPool.length > 0) {
-    for (const v of framelessTabPool) {
-      const customGroup = customTabFolderAssignment.get(v.id);
-      enriched.push({
-        id: v.id,
-        windowId: v.windowId,
-        title: v.title || extractDomainLabel(v.url) || 'Untitled',
-        url: v.url || '',
-        favIconUrl: v.favIconUrl || getFaviconFallback(v.url),
-        active: v.id === activeFramelessVirtualId,
-        pinned: Boolean(v.pinned),
-        audible: false,
-        groupId: -1,
-        groupTitle: v.groupTitle || (customGroup ? customGroup.title : null),
-        groupColor: v.groupColor || (customGroup ? customGroup.color : null),
-        isVirtual: true
-      });
-    }
   }
 
   return enriched;
@@ -832,13 +731,10 @@ async function broadcastTabsUpdated() {
     for (const tab of activeTabs) {
       if (tab.id && isInjectableUrl(tab.url)) {
         try {
-          const win = await chrome.windows.get(tab.windowId);
-          const effectiveActiveId =
-            win.type === 'popup' && activeFramelessVirtualId ? activeFramelessVirtualId : tab.id;
           await chrome.tabs.sendMessage(tab.id, {
             type: 'DIA_TABS_UPDATED',
             tabs: enriched,
-            activeTabId: effectiveActiveId
+            activeTabId: tab.id
           });
         } catch {
           // Ignore tabs without content script
@@ -854,6 +750,20 @@ chrome.tabs.onCreated.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onRemoved.addListener((tabId) => {
   popupChildTabs.delete(tabId);
   broadcastTabsUpdated();
+});
+chrome.tabGroups?.onRemoved?.addListener(async (group) => {
+  try {
+    const stored = await chrome.storage.local.get({ [FOLDER_PARENT_KEY]: {} });
+    const parents = stored[FOLDER_PARENT_KEY] || {};
+    delete parents[String(group.id)];
+    for (const [childId, parentId] of Object.entries(parents)) {
+      if (Number(parentId) === group.id) delete parents[childId];
+    }
+    await chrome.storage.local.set({ [FOLDER_PARENT_KEY]: parents });
+    await broadcastTabsUpdated();
+  } catch {
+    // A group can disappear while its cleanup is being persisted.
+  }
 });
 chrome.tabs.onActivated.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onMoved.addListener(() => { broadcastTabsUpdated(); });
@@ -921,18 +831,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const win = windowId
           ? await chrome.windows.get(windowId)
           : await chrome.windows.getCurrent();
-        if (win.type === 'popup' && sender.tab) {
-          syncPopupTabIntoPool(sender.tab);
-        }
         sendResponse({
           isFullscreen: win.state === 'fullscreen',
           isFrameless: win.type === 'popup',
           windowState: win.state,
           windowType: win.type,
-          activeTabId:
-            win.type === 'popup' && activeFramelessVirtualId
-              ? activeFramelessVirtualId
-              : sender.tab?.id ?? null
+          activeTabId: sender.tab?.id ?? null
         });
       } catch {
         sendResponse({ isFullscreen: false, isFrameless: false, windowState: 'normal', windowType: 'normal' });
@@ -945,14 +849,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const tabs = await getEnrichedOpenTabs();
-        let effectiveActiveId = sender.tab?.id ?? null;
-        if (sender.tab?.windowId) {
-          const win = await chrome.windows.get(sender.tab.windowId);
-          if (win.type === 'popup' && activeFramelessVirtualId) {
-            effectiveActiveId = activeFramelessVirtualId;
-          }
-        }
-        sendResponse({ tabs, activeTabId: effectiveActiveId });
+        sendResponse({ tabs, activeTabId: sender.tab?.id ?? null });
       } catch (err) {
         sendResponse({ tabs: [], error: String(err) });
       }
@@ -968,66 +865,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ ok: false });
           return;
         }
-        // Check if caller is inside a Frameless Popup Window (type === 'popup')
-        if (sender.tab && sender.tab.windowId) {
-          const callerWin = await chrome.windows.get(sender.tab.windowId);
-          if (callerWin.type === 'popup') {
-            syncPopupTabIntoPool(sender.tab);
-            const virtualTarget = framelessTabPool.find((v) => v.id === tabId);
-            if (virtualTarget) {
-              activeFramelessVirtualId = virtualTarget.id;
-              await chrome.tabs.update(sender.tab.id, { url: virtualTarget.url });
-              await broadcastTabsUpdated();
-              sendResponse({ ok: true, navigatedInFrameless: true });
-              return;
-            }
-            if (sender.tab.id !== tabId) {
-              const targetTab = await chrome.tabs.get(tabId);
-              if (targetTab && targetTab.url) {
-                const newId = nextFramelessVirtualId++;
-                framelessTabPool.push({
-                  id: newId,
-                  windowId: sender.tab.windowId,
-                  title: targetTab.title || extractDomainLabel(targetTab.url) || 'Tab',
-                  url: targetTab.url,
-                  favIconUrl: targetTab.favIconUrl || getFaviconFallback(targetTab.url),
-                  pinned: Boolean(targetTab.pinned),
-                  audible: false,
-                  groupId: -1,
-                  groupTitle: null,
-                  groupColor: null,
-                  isVirtual: true
-                });
-                activeFramelessVirtualId = newId;
-                await chrome.tabs.update(sender.tab.id, { url: targetTab.url });
-                await broadcastTabsUpdated();
-                sendResponse({ ok: true, navigatedInFrameless: true });
-                return;
-              }
-            }
-          }
-        }
-
-        if (sender.tab?.windowId) {
-          const virtualTarget = framelessTabPool.find((entry) => entry.id === tabId);
-          if (virtualTarget) {
-            await chrome.tabs.update(sender.tab.id, { url: virtualTarget.url, active: true });
-          } else {
-            const targetTab = await chrome.tabs.get(tabId);
-            if (targetTab.windowId !== sender.tab.windowId) {
-              await chrome.tabs.move(targetTab.id, { windowId: sender.tab.windowId, index: -1 });
-            }
-            await chrome.tabs.update(targetTab.id, { active: true });
-          }
-          await chrome.windows.update(sender.tab.windowId, { focused: true });
-          sendResponse({ ok: true, navigatedInCurrentWindow: true });
-          return;
-        }
-
+        const targetTab = await chrome.tabs.get(tabId);
         await chrome.tabs.update(tabId, { active: true });
-        if (windowId) {
-          await chrome.windows.update(windowId, { focused: true });
-        }
+        await chrome.windows.update(windowId || targetTab.windowId, { focused: true });
         sendResponse({ ok: true });
       } catch (err) {
         sendResponse({ ok: false, error: String(err) });
@@ -1040,22 +880,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         const targetId = message.tabId || sender.tab?.id;
-        const vIdx = framelessTabPool.findIndex((v) => v.id === targetId);
-        if (vIdx !== -1) {
-          const wasActive = framelessTabPool[vIdx].id === activeFramelessVirtualId;
-          framelessTabPool.splice(vIdx, 1);
-          if (wasActive && framelessTabPool.length > 0 && sender.tab?.id) {
-            const nextEntry = framelessTabPool[Math.max(0, vIdx - 1)];
-            activeFramelessVirtualId = nextEntry.id;
-            await chrome.tabs.update(sender.tab.id, { url: nextEntry.url });
-          } else if (framelessTabPool.length === 0 && sender.tab?.id) {
-            await chrome.tabs.remove(sender.tab.id);
-          }
-          const tabs = await getEnrichedOpenTabs();
-          sendResponse({ ok: true, tabs, activeTabId: activeFramelessVirtualId });
-          await broadcastTabsUpdated();
-          return;
-        }
         if (targetId) {
           await chrome.tabs.remove(targetId);
         }
@@ -1071,19 +895,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DIA_TOGGLE_PIN_TAB') {
     (async () => {
       try {
-        if (sender.tab?.windowId) {
-          const callerWin = await chrome.windows.get(sender.tab.windowId);
-          if (callerWin.type === 'popup') {
-            syncPopupTabIntoPool(sender.tab);
-            const activeEntry = framelessTabPool.find((v) => v.id === activeFramelessVirtualId);
-            if (activeEntry) {
-              activeEntry.pinned = !activeEntry.pinned;
-              await broadcastTabsUpdated();
-              sendResponse({ ok: true, pinned: activeEntry.pinned });
-              return;
-            }
-          }
-        }
         const targetId = message.tabId || sender.tab?.id;
         if (!targetId) {
           sendResponse({ ok: false });
@@ -1133,6 +944,66 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'DIA_MOVE_TAB_TO_FOLDER') {
+    (async () => {
+      try {
+        const tabId = Number(message.tabId);
+        const folderGroupId = Number(message.folderGroupId);
+        const targetWindowId = Number(message.windowId);
+        if (!Number.isInteger(tabId)) throw new Error('Invalid tab');
+
+        const tab = await chrome.tabs.get(tabId);
+        if (Number.isInteger(targetWindowId) && tab.windowId !== targetWindowId) {
+          await chrome.tabs.move(tabId, { windowId: targetWindowId, index: -1 });
+        }
+        if (Number.isInteger(folderGroupId) && folderGroupId >= 0) {
+          await chrome.tabs.group({ groupId: folderGroupId, tabIds: [tabId] });
+        } else if (tab.groupId >= 0) {
+          await chrome.tabs.ungroup([tabId]);
+        }
+        if (Number.isInteger(message.index) && message.index >= 0) {
+          const movedTab = await chrome.tabs.get(tabId);
+          await chrome.tabs.move(tabId, { windowId: movedTab.windowId, index: message.index });
+        }
+        customTabFolderAssignment.delete(tabId);
+        await broadcastTabsUpdated();
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === 'DIA_MOVE_FOLDER') {
+    (async () => {
+      try {
+        const groupId = Number(message.groupId);
+        const parentGroupId = Number(message.parentGroupId);
+        if (!Number.isInteger(groupId) || groupId < 0 || groupId === parentGroupId) {
+          throw new Error('Invalid folder destination');
+        }
+        const stored = await chrome.storage.local.get({ [FOLDER_PARENT_KEY]: {} });
+        const parents = stored[FOLDER_PARENT_KEY] || {};
+        let ancestorId = parentGroupId;
+        const visited = new Set([groupId]);
+        while (ancestorId >= 0) {
+          if (visited.has(ancestorId)) throw new Error('Folders cannot be nested inside themselves');
+          visited.add(ancestorId);
+          ancestorId = Number(parents[String(ancestorId)] ?? -1);
+        }
+        if (parentGroupId < 0) delete parents[String(groupId)];
+        else parents[String(groupId)] = parentGroupId;
+        await chrome.storage.local.set({ [FOLDER_PARENT_KEY]: parents });
+        await broadcastTabsUpdated();
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) });
+      }
+    })();
+    return true;
+  }
+
   if (message.type === 'DIA_NAVIGATE') {
     (async () => {
       try {
@@ -1143,50 +1014,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         // If caller opens a New Tab (+ New Tab / ⌘T / ⌘K)
         if (newTab) {
+          const createOptions = { url, active: true };
           if (sender.tab?.windowId) {
-            const callerWin = await chrome.windows.get(sender.tab.windowId);
-            if (callerWin.type === 'popup') {
-              // Preserve the existing tab in framelessTabPool and add a brand-new tab entry in the Sidebar!
-              syncPopupTabIntoPool(sender.tab);
-              const newId = nextFramelessVirtualId++;
-              framelessTabPool.push({
-                id: newId,
-                windowId: sender.tab.windowId,
-                title: extractDomainLabel(url) || 'New Tab',
-                url,
-                favIconUrl: getFaviconFallback(url),
-                pinned: false,
-                audible: false,
-                groupId: -1,
-                groupTitle: null,
-                groupColor: null,
-                isVirtual: true
-              });
-              activeFramelessVirtualId = newId;
-              await chrome.tabs.update(sender.tab.id, { url });
-              await broadcastTabsUpdated();
-              sendResponse({ ok: true, activeTabId: newId });
-              return;
-            }
-            // Normal / Fullscreen window: create a new tab in the exact same window
-            await chrome.tabs.create({ windowId: callerWin.id, url, active: true });
-            sendResponse({ ok: true });
-            return;
+            createOptions.windowId = sender.tab.windowId;
           }
-          await chrome.tabs.create({ url, active: true });
+          if (sender.tab?.id) {
+            // Keep this tab associated with its source so frameless-window
+            // handoff can adopt it into the same Chrome window if needed.
+            createOptions.openerTabId = sender.tab.id;
+          }
+          await chrome.tabs.create(createOptions);
         } else if (sender.tab?.id) {
-          if (sender.tab.windowId) {
-            const callerWin = await chrome.windows.get(sender.tab.windowId);
-            if (callerWin.type === 'popup') {
-              syncPopupTabIntoPool(sender.tab);
-              const activeEntry = framelessTabPool.find((v) => v.id === activeFramelessVirtualId);
-              if (activeEntry) {
-                activeEntry.url = url;
-                activeEntry.title = extractDomainLabel(url) || activeEntry.title;
-                activeEntry.favIconUrl = getFaviconFallback(url);
-              }
-            }
-          }
           await chrome.tabs.update(sender.tab.id, { url });
         } else {
           const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -1255,30 +1093,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         const downloadsUrl = 'chrome://downloads/';
         if (sender.tab?.windowId) {
-          const callerWin = await chrome.windows.get(sender.tab.windowId);
-          if (callerWin.type === 'popup') {
-            syncPopupTabIntoPool(sender.tab);
-            const newId = nextFramelessVirtualId++;
-            framelessTabPool.push({
-              id: newId,
-              windowId: sender.tab.windowId,
-              title: 'Downloads',
-              url: downloadsUrl,
-              favIconUrl: '',
-              pinned: false,
-              audible: false,
-              groupId: -1,
-              groupTitle: null,
-              groupColor: null,
-              isVirtual: true
-            });
-            activeFramelessVirtualId = newId;
-            await chrome.tabs.update(sender.tab.id, { url: downloadsUrl });
-            await broadcastTabsUpdated();
-            sendResponse({ ok: true, activeTabId: newId });
-            return;
-          }
-          await chrome.tabs.create({ windowId: callerWin.id, url: downloadsUrl, active: true });
+          await chrome.tabs.create({ windowId: sender.tab.windowId, url: downloadsUrl, active: true });
           sendResponse({ ok: true });
           return;
         }
@@ -1301,30 +1116,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         const targetUrl = 'chrome://extensions/shortcuts';
         if (sender.tab?.windowId) {
-          const callerWin = await chrome.windows.get(sender.tab.windowId);
-          if (callerWin.type === 'popup') {
-            syncPopupTabIntoPool(sender.tab);
-            const newId = nextFramelessVirtualId++;
-            framelessTabPool.push({
-              id: newId,
-              windowId: sender.tab.windowId,
-              title: 'Keyboard Shortcuts',
-              url: targetUrl,
-              favIconUrl: '',
-              pinned: false,
-              audible: false,
-              groupId: -1,
-              groupTitle: null,
-              groupColor: null,
-              isVirtual: true
-            });
-            activeFramelessVirtualId = newId;
-            await chrome.tabs.update(sender.tab.id, { url: targetUrl });
-            await broadcastTabsUpdated();
-            sendResponse({ ok: true });
-            return;
-          }
-          await chrome.tabs.create({ windowId: callerWin.id, url: targetUrl, active: true });
+          await chrome.tabs.create({ windowId: sender.tab.windowId, url: targetUrl, active: true });
           sendResponse({ ok: true });
           return;
         }
