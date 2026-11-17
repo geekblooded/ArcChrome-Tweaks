@@ -3,7 +3,7 @@
  */
 
 const DEFAULT_SETTINGS = {
-  enabled: true,
+  enabled: false,
   uiTheme: 'light',
   userChangedTheme: false,
   activationMode: 'always',
@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS = {
   squareSidebarCorners: false,
   frameColor: '#ebecf7',
   framePreset: 'arc-lavender',
-  insetContent: false,
+  insetContent: true,
   showInnerBorder: true,
   commandBarEnabled: true,
   openNewTabInCommandBar: true,
@@ -53,9 +53,8 @@ const els = {
   settingsShell: document.getElementById('settingsShell'),
   bigPowerBtn: document.getElementById('bigPowerBtn'),
   headerPowerToggleBtn: document.getElementById('headerPowerToggleBtn'),
-  enabledToggle: document.getElementById('enabledToggle'),
   railItems: document.querySelectorAll('.dia-rail-item'),
-  themeBtns: document.querySelectorAll('.dia-theme-btn'),
+  themeToggleBtn: document.getElementById('themeToggleBtn'),
   navBackBtn: document.getElementById('navBackBtn'),
   navForwardBtn: document.getElementById('navForwardBtn'),
   paneTitle: document.getElementById('paneTitle'),
@@ -113,9 +112,10 @@ const els = {
 };
 
 let currentSettings = { ...DEFAULT_SETTINGS };
-let navHistory = ['overview'];
+let navHistory = ['detail-bezel'];
 let navIndex = 0;
-let activeCategory = 'all';
+let activeCategory = 'page';
+let currentWindowState = null;
 
 const VIEW_TITLES = {
   overview: 'Patches',
@@ -157,10 +157,18 @@ async function saveSettings(partial) {
   }
 }
 
-function showInlineToast(msg) {
-  els.statusToast.textContent = msg;
+let inlineToastTimer;
+function showInlineToast(msg, kind = 'success') {
+  els.statusToast.dataset.kind = kind;
+  const badge = document.createElement('span');
+  badge.className = 'dia-inline-toast-badge';
+  badge.setAttribute('aria-hidden', 'true');
+  const path = kind === 'error' ? '<path d="M6 6l12 12M18 6 6 18"/>' : kind === 'info' ? '<path d="M12 10v6M12 7h.01"/>' : '<path d="m5 12 4.5 4.5L19 7"/>';
+  badge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+  els.statusToast.replaceChildren(badge, document.createTextNode(msg));
   els.statusToast.hidden = false;
-  setTimeout(() => {
+  clearTimeout(inlineToastTimer);
+  inlineToastTimer = setTimeout(() => {
     els.statusToast.hidden = true;
   }, 2400);
 }
@@ -168,9 +176,10 @@ function showInlineToast(msg) {
 function applyUiTheme(theme) {
   const mode = theme || 'auto';
   document.documentElement.setAttribute('data-ui-theme', mode);
-  els.themeBtns.forEach((btn) => {
-    btn.classList.toggle('is-active', btn.dataset.uiTheme === mode);
-  });
+  const dark = mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  els.themeToggleBtn.querySelector('span').textContent = dark ? '☾' : '☀';
+  els.themeToggleBtn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  els.themeToggleBtn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
 }
 
 function renderSettings(s) {
@@ -178,11 +187,14 @@ function renderSettings(s) {
 
   const isEnabled = s.enabled !== false;
   if (els.welcomeView && els.settingsShell) {
-    els.welcomeView.hidden = isEnabled;
-    els.settingsShell.hidden = !isEnabled;
+    const fullscreen = currentWindowState?.state === 'fullscreen';
+    const setupComplete = isEnabled && fullscreen;
+    els.welcomeView.hidden = setupComplete;
+    els.settingsShell.hidden = !setupComplete;
+    document.getElementById('welcomeIntro').hidden = setupComplete;
   }
 
-  els.enabledToggle.checked = isEnabled;
+
   els.bezelEnabledToggle.checked = !s.edgeToEdge && Number(s.bezelSize ?? 10) > 0;
   els.edgeToEdgeToggle.checked = Boolean(s.edgeToEdge);
 
@@ -208,7 +220,7 @@ function renderSettings(s) {
   els.cornerRadiusInput.value = String(s.cornerRadius ?? 12);
   els.cornerRadiusValue.textContent = `${s.cornerRadius ?? 12} pt`;
   els.customColorInput.value = s.frameColor || '#ebecf7';
-  els.activationModeSelect.value = s.activationMode || 'always';
+  els.activationModeSelect.value = 'fullscreen';
   els.squareSidebarCornersToggle.checked = Boolean(s.squareSidebarCorners);
   els.innerBorderToggle.checked = s.showInnerBorder !== false;
   els.insetContentToggle.checked = Boolean(s.insetContent);
@@ -283,7 +295,15 @@ function applyCategoryAndSearch() {
 async function syncWindowStateToggles() {
   try {
     const win = await chrome.windows.getCurrent();
-    els.framelessModeToggle.checked = win.type === 'popup';
+    currentWindowState = win;
+    if (currentSettings.enabled !== false && win.state === 'fullscreen') {
+      const session = await chrome.storage.session.get('arcFullscreenWindowId');
+      if (session.arcFullscreenWindowId == null) {
+        await chrome.storage.session.set({ arcSetupWindowId: win.id, arcFullscreenWindowId: win.id });
+      }
+    }
+    els.framelessModeToggle.checked = win.state === 'fullscreen';
+    renderSettings(currentSettings);
   } catch {
     // Ignore
   }
@@ -295,10 +315,10 @@ function bindEvents() {
       els.railItems.forEach((i) => i.classList.remove('is-active'));
       item.classList.add('is-active');
       activeCategory = item.dataset.category || 'all';
-      navigateToView('overview');
-      const catLabel = item.textContent.trim();
-      els.paneTitle.textContent = activeCategory === 'all' ? 'Patches' : catLabel;
-      applyCategoryAndSearch();
+      const detail = { page: 'detail-bezel', window: 'detail-spotlight', shortcuts: 'detail-shortcuts' }[activeCategory];
+      navigateToView(detail || 'overview');
+      els.paneTitle.textContent = item.textContent.trim();
+      if (!detail) applyCategoryAndSearch();
     });
   });
 
@@ -317,6 +337,7 @@ function bindEvents() {
   });
 
   els.drillRows.forEach((row) => {
+    if (!row.classList.contains('is-drillable')) return;
     row.addEventListener('click', (e) => {
       if (e.target.closest('[data-stop-prop="true"]')) return;
       const targetView = row.dataset.drill;
@@ -327,36 +348,25 @@ function bindEvents() {
   });
 
   els.patchSearchInput.addEventListener('input', () => {
+    const query = els.patchSearchInput.value.trim().toLowerCase();
+    const pageControls = document.getElementById('detail-bezel');
+    const pageMatches = `${pageControls.textContent} ${Array.from(pageControls.querySelectorAll('[data-keywords]'), row => row.dataset.keywords).join(' ')}`.toLowerCase().includes(query);
+    if (activeCategory === 'page' && (!query || pageMatches)) {
+      navigateToView('detail-bezel', false);
+      return;
+    }
     if (navHistory[navIndex] !== 'overview') {
       navigateToView('overview', false);
     }
     applyCategoryAndSearch();
   });
 
-  els.themeBtns.forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const uiTheme = btn.dataset.uiTheme || 'light';
-      applyUiTheme(uiTheme);
-      const effectiveMode =
-        uiTheme === 'auto'
-          ? window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light'
-          : uiTheme;
-      const curInfo = PRESET_INFO[currentSettings.framePreset];
-      let nextPreset = currentSettings.framePreset || 'arc-lavender';
-      let nextColor = currentSettings.frameColor || '#ebecf7';
-      if (!curInfo || curInfo.mode !== effectiveMode) {
-        nextPreset = effectiveMode === 'light' ? 'arc-lavender' : 'obsidian';
-        nextColor = PRESET_INFO[nextPreset].hex;
-      }
-      await saveSettings({
-        uiTheme,
-        userChangedTheme: true,
-        framePreset: nextPreset,
-        frameColor: nextColor
-      });
-    });
+  els.themeToggleBtn.addEventListener('click', async () => {
+    const isDark = currentSettings.uiTheme === 'dark' || (currentSettings.uiTheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const uiTheme = isDark ? 'light' : 'dark';
+    const curInfo = PRESET_INFO[currentSettings.framePreset];
+    const nextPreset = !curInfo || curInfo.mode !== uiTheme ? (uiTheme === 'light' ? 'arc-lavender' : 'obsidian') : currentSettings.framePreset;
+    await saveSettings({ uiTheme, userChangedTheme: true, framePreset: nextPreset, frameColor: PRESET_INFO[nextPreset]?.hex || currentSettings.frameColor });
   });
 
   if (els.quickThemeSelect) {
@@ -380,60 +390,32 @@ function bindEvents() {
     });
   }
 
-  if (els.bigPowerBtn) {
-    els.bigPowerBtn.addEventListener('click', async () => {
-      els.bigPowerBtn.style.transform = 'scale(0.92)';
-      setTimeout(() => { els.bigPowerBtn.style.transform = ''; }, 150);
-      try {
-        await chrome.runtime.sendMessage({ type: 'DIA_ACTIVATE_ARC' });
-      } catch {
-        // Fallback
-      }
-      await saveSettings({ enabled: true });
-      if (els.welcomeView && els.settingsShell) {
-        els.welcomeView.hidden = true;
-        els.settingsShell.hidden = false;
-      }
-      showInlineToast('Arc experience activated!');
-    });
-  }
-
-  if (els.headerPowerToggleBtn) {
-    els.headerPowerToggleBtn.addEventListener('click', async () => {
-      try {
-        await chrome.runtime.sendMessage({ type: 'DIA_DEACTIVATE_ARC' });
-      } catch {
-        // Settings still disable locally if the service worker is unavailable.
-      }
-      await saveSettings({ enabled: false });
-      if (els.welcomeView && els.settingsShell) {
-        els.welcomeView.hidden = false;
-        els.settingsShell.hidden = true;
-      }
-    });
-  }
-
-  els.enabledToggle.addEventListener('change', async (e) => {
-    const on = e.target.checked;
-    if (on) {
-      try {
-        await chrome.runtime.sendMessage({ type: 'DIA_ACTIVATE_ARC' });
-      } catch {
-        // Fallback
-      }
-    } else {
-      try {
-        await chrome.runtime.sendMessage({ type: 'DIA_DEACTIVATE_ARC' });
-      } catch {
-        // Settings still disable locally if the service worker is unavailable.
-      }
-    }
-    await saveSettings({ enabled: on });
-    if (els.welcomeView && els.settingsShell) {
-      els.welcomeView.hidden = on;
-      els.settingsShell.hidden = !on;
+  els.bigPowerBtn.addEventListener('click', async () => {
+    const errorEl = document.getElementById('setupError');
+    errorEl.hidden = true;
+    els.bigPowerBtn.disabled = true;
+    els.bigPowerBtn.classList.add('is-activating');
+    try {
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) await new Promise(resolve => setTimeout(resolve, 500));
+      const res = await chrome.runtime.sendMessage({ type: 'DIA_ACTIVATE_ARC' });
+      if (!res?.ok) throw new Error(res?.error || 'Could not enter full screen.');
+      currentSettings = { ...currentSettings, enabled: true, activationMode: 'fullscreen' };
+      await syncWindowStateToggles();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not enter full screen.';
+      errorEl.hidden = false;
+    } finally {
+      els.bigPowerBtn.classList.remove('is-activating');
+      els.bigPowerBtn.disabled = false;
     }
   });
+
+  async function turnOff() {
+    await chrome.runtime.sendMessage({ type: 'DIA_DEACTIVATE_ARC' });
+    await saveSettings({ enabled: false });
+    await syncWindowStateToggles();
+  }
+  els.headerPowerToggleBtn.addEventListener('click', turnOff);
 
   els.bezelEnabledToggle.addEventListener('change', async (e) => {
     const on = e.target.checked;
@@ -478,12 +460,12 @@ function bindEvents() {
 
   els.groupDomainRow.addEventListener('click', async () => {
     const res = await chrome.runtime.sendMessage({ type: 'DIA_GROUP_TABS_BY_DOMAIN' });
-    showInlineToast(res?.message || 'Grouped tabs by domain');
+    showInlineToast(res?.message || 'Grouped tabs by domain', res?.ok === false ? 'error' : res?.tabsGrouped === 0 ? 'info' : 'success');
   });
 
   els.tidyTabsRow.addEventListener('click', async () => {
     const res = await chrome.runtime.sendMessage({ type: 'DIA_TIDY_TABS' });
-    showInlineToast(res?.message || 'Tidied open tabs by subject');
+    showInlineToast(res?.message || 'Tidied open tabs by subject', res?.ok === false ? 'error' : res?.tabsGrouped === 0 ? 'info' : 'success');
   });
 
   // Detail 1: Bezel Geometry
@@ -557,7 +539,7 @@ function bindEvents() {
       uiTheme: 'light',
       activationMode: 'always',
       showInnerBorder: true,
-      insetContent: false
+      insetContent: true
     });
     showInlineToast('Reset bezel geometry & theme to defaults');
   });
@@ -635,9 +617,20 @@ function bindEvents() {
 
 async function init() {
   currentSettings = await loadSettings();
-  renderSettings(currentSettings);
-  bindEvents();
+  // Put detailed controls directly under their top-level category.
+  document.querySelector('#detail-bezel .dia-card-stack').prepend(document.querySelector('[data-drill="detail-bezel"]'));
+  document.querySelector('#detail-bezel .dia-card-stack').append(els.edgeToEdgeToggle.closest('.dia-card-row'));
+  // The preset grid already controls the same theme as this overview dropdown.
+  els.quickThemeSelect?.closest('.dia-card-row')?.remove();
+  document.querySelector('#detail-spotlight .dia-card-stack').prepend(document.querySelector('[data-drill="detail-spotlight"]'));
+  document.querySelector('#detail-shortcuts .dia-card-stack').prepend(document.querySelector('[data-drill="detail-shortcuts"]'));
+  for (const id of ['groupDomainRow', 'tidyTabsRow']) document.querySelector('[data-group="tabs"] .dia-card-stack').append(document.getElementById(id));
+  document.querySelectorAll('#detail-bezel [data-drill], #detail-spotlight [data-drill], #detail-shortcuts [data-drill]').forEach(row => { row.classList.remove('is-drillable'); row.querySelector('.dia-chevron-btn')?.remove(); });
+  document.querySelectorAll('.dia-history-pill').forEach(el => el.hidden = true);
   await syncWindowStateToggles();
+  bindEvents();
+  navigateToView('detail-bezel', false);
+  applyCategoryAndSearch();
 }
 
 init();

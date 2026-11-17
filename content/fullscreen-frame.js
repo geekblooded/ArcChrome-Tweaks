@@ -22,7 +22,7 @@
   window.__diaFullscreenFrameLoaded = true;
 
   const DEFAULT_SETTINGS = {
-    enabled: true,
+    enabled: false,
     uiTheme: 'light',
     userChangedTheme: false,
     activationMode: 'always', // 'always' | 'fullscreen'
@@ -32,7 +32,7 @@
     squareSidebarCorners: false, // _DPSquareSidebarCornersEntry
     frameColor: '#ebecf7',
     framePreset: 'arc-lavender',
-    insetContent: false,
+    insetContent: true,
     showInnerBorder: true
   };
 
@@ -205,7 +205,7 @@
       currentSettings.enabled &&
       !htmlElementFullscreen &&
       !currentSettings.edgeToEdge &&
-      (currentSettings.activationMode === 'always' || isBrowserFullscreen);
+      isBrowserFullscreen;
 
     html.setAttribute('data-dia-bezel-active', shouldActivate ? 'true' : 'false');
   }
@@ -215,7 +215,7 @@
     try {
       const response = await chrome.runtime.sendMessage({ type: 'DIA_GET_WINDOW_STATE' });
       if (response && typeof response.isFullscreen === 'boolean') {
-        isBrowserFullscreen = response.isFullscreen || detectFullscreenGeometry();
+        isBrowserFullscreen = response.isFullscreen;
       }
     } catch {
       // Fallback to geometry check if service worker is waking up
@@ -262,7 +262,7 @@
 
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type === 'DIA_WINDOW_STATE_CHANGED') {
-        isBrowserFullscreen = Boolean(message.isFullscreen) || detectFullscreenGeometry();
+        isBrowserFullscreen = Boolean(message.isFullscreen);
         applyFrameVariables();
         sendResponse({ ok: true });
       } else if (message?.type === 'DIA_SETTINGS_UPDATED' && message.settings) {

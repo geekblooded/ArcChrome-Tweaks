@@ -76,6 +76,10 @@ body {
   font-size: 13px;
 }
 
+.recovery h1 { font-size: 24px; margin: 0 0 10px; }
+.recovery p { color: #73777c; margin: 0 0 24px; font-size: 14px; }
+.recovery-retry { margin-top: 18px; padding: 10px 22px; border: 0; border-radius: 999px; background: #0878f9; color: white; font: inherit; cursor: pointer; }
+
 @media (prefers-color-scheme: dark) {
   :root { background: #17181b; color: #f4f4f2; }
   body { background: radial-gradient(ellipse at 50% 44%, #242529 0%, #17181b 66%); }

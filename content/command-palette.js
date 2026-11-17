@@ -103,7 +103,7 @@
   ];
 
   let settings = {
-    enabled: true,
+    enabled: false,
     uiTheme: 'light', // Default light theme on first install until user changes manually
     userChangedTheme: false,
     framePreset: 'arc-lavender',
@@ -140,6 +140,7 @@
   let sidebarHideTimer = null;
   let topBarHideTimer = null;
   let toastTimer = null;
+  let cleanupDownloadsView = () => {};
 
   let hostEl = null;
   let shadow = null;
@@ -270,12 +271,12 @@
       windowId,
       index
     });
-    if (!result?.ok) showToast('Could not move tab.');
+    if (!result?.ok) showToast('Could not move tab.', 'error');
   }
 
   async function moveSidebarFolder(groupId, parentGroupId = -1) {
     const result = await chrome.runtime.sendMessage({ type: 'DIA_MOVE_FOLDER', groupId, parentGroupId });
-    if (!result?.ok) showToast(result?.error || 'Could not move folder.');
+    if (!result?.ok) showToast(result?.error || 'Could not move folder.', 'error');
   }
 
   function buildShadowDOM() {
@@ -676,6 +677,10 @@
         opacity: 1;
         pointer-events: auto;
       }
+
+      .dia-sidebar.is-downloads { width: 285.2px; transform: translateX(-303px); }
+      .dia-sidebar.is-downloads.is-visible { transform: translateX(0); }
+      .dia-sidebar.is-downloads.is-pinned { width: 285.2px; }
 
       .dia-sidebar.is-pinned {
         top: 0;
@@ -1142,6 +1147,20 @@
         font-weight: 500;
         color: var(--text-muted);
       }
+      .dia-sb-folder-rename {
+        border: 0; background: transparent; color: inherit; cursor: pointer;
+        display: none; align-items: center; justify-content: center;
+        width: 22px; height: 22px; padding: 3px; border-radius: 5px;
+      }
+      .dia-sb-group-header:hover .dia-sb-folder-rename,
+      .dia-sb-group-header:focus-within .dia-sb-folder-rename { display: inline-flex; }
+      .dia-sb-folder-rename[hidden] { display: none !important; }
+      .dia-sb-folder-rename:hover { background: var(--item-hover); }
+      .dia-sb-folder-rename svg { width: 16px; height: 16px; }
+      .dia-sb-folder-input {
+        min-width: 0; width: 100%; padding: 2px 4px; border: 1px solid var(--accent);
+        border-radius: 4px; outline: none; font: inherit; color: var(--text-primary); background: transparent;
+      }
 
       .dia-sb-folder-items {
         display: flex;
@@ -1212,6 +1231,8 @@
       .dia-sb-tab-close {
         width: 20px;
         height: 20px;
+        padding: 0;
+        flex: 0 0 20px;
         border-radius: 0;
         border: none;
         background: transparent;
@@ -1225,8 +1246,9 @@
       }
 
       .dia-sb-tab-close svg {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
       }
 
       .dia-sb-tab:hover .dia-sb-tab-close {
@@ -1452,8 +1474,8 @@
         width: 20px;
         height: 20px;
         border-radius: 50%;
-        background: rgba(52, 211, 153, 0.20);
-        color: #10b981;
+        background: #10b981;
+        color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1463,6 +1485,8 @@
         width: 13px;
         height: 13px;
       }
+      .dia-toast[data-kind="error"] .dia-toast-badge { background: #e5484d; }
+      .dia-toast[data-kind="info"] .dia-toast-badge { background: #3478f6; }
     `;
 
     // Left Edge Physical Sensor Strip
@@ -1694,11 +1718,121 @@
 
     const downloadsBtn = document.createElement('button');
     downloadsBtn.className = 'dia-sb-icon-btn';
-    downloadsBtn.title = 'Downloads (⌘J)';
+    downloadsBtn.title = 'Downloads';
+    downloadsBtn.setAttribute('aria-label', 'Show downloads');
+    downloadsBtn.setAttribute('aria-pressed', 'false');
     downloadsBtn.innerHTML = ICONLY.downloads;
-    downloadsBtn.addEventListener('click', async () => {
-      await chrome.runtime.sendMessage({ type: 'DIA_OPEN_DOWNLOADS' });
-    });
+    const downloadHost = document.createElement('div');
+    downloadHost.style.cssText = 'display:none; flex:1; min-height:0; overflow:hidden;';
+    const downloadsShadow = downloadHost.attachShadow({ mode: 'closed' });
+    downloadsShadow.innerHTML = `<style>
+      :host{font-family:-apple-system,BlinkMacSystemFont,"Google Sans",sans-serif;color:var(--text-primary,#24252b)}
+      *{box-sizing:border-box} .panel{height:100%;display:flex;flex-direction:column;padding:10px 10px 4px;gap:10px}
+      .heading{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650}
+      button{font:inherit;cursor:pointer;color:inherit} .back{border:0;background:transparent;font-size:19px;padding:2px 5px;border-radius:6px}
+      input{width:100%;border:1px solid rgba(120,120,135,.22);border-radius:9px;padding:8px;background:rgba(127,127,140,.09);color:inherit;font:inherit;font-size:12px;outline:none}
+      .list{overflow-y:auto;min-height:0;flex:1} .item{padding:9px 2px;border-bottom:1px solid rgba(130,130,140,.15)}
+      .item.is-openable{cursor:pointer;border-radius:8px}.item.is-openable:hover,.item.is-openable:focus-visible{background:rgba(127,127,140,.1);outline:none}
+      .top{display:flex;gap:8px;align-items:center}.icon{width:28px;height:28px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:7px;background:rgba(127,127,140,.14);font-size:9px;font-weight:700;letter-spacing:.02em}.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;flex:1;min-width:0}
+      .meta{font-size:11px;opacity:.7;margin:3px 0 0 36px;overflow-wrap:anywhere}.actions{display:flex;gap:3px;opacity:0;pointer-events:none;transition:opacity .12s}
+      .item:hover .actions,.item:focus-within .actions{opacity:1;pointer-events:auto}
+      .actions button{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:6px;padding:5px;background:transparent}.actions button:hover,.actions button:focus-visible{background:rgba(127,127,140,.18)}.actions svg{width:16px;height:16px}
+      .empty{font-size:12px;opacity:.7;padding:12px 2px;line-height:1.5}.note{font-size:10px;opacity:.65;margin:0}
+    </style><div class="panel"><div class="heading"><button class="back" type="button" aria-label="Back to tabs">←</button><span>Downloads</span></div><input type="search" aria-label="Search downloads" placeholder="Search downloads"><div class="list" aria-live="polite"></div><p class="note">Showing up to 200 downloads.</p></div>`;
+    const downloadsList = downloadsShadow.querySelector('.list');
+    const downloadsSearch = downloadsShadow.querySelector('input');
+    const hiddenInDownloads = [sidebarPinnedGridEl, sbTools, sidebarFoldersListEl, sbDivider, sbNewTabRow, sidebarTabsListEl];
+    let downloadsVisible = false;
+    let downloadPoll = null;
+    let downloadSearchTimer = null;
+    let downloadRequest = 0;
+    let lastDownloadRender = '';
+    const refreshDownloads = async () => {
+      const request = ++downloadRequest;
+      try {
+        const result = await chrome.runtime.sendMessage({ type: 'DIA_LIST_DOWNLOADS', query: downloadsSearch.value });
+        if (!downloadsVisible || request !== downloadRequest) return;
+        if (!result?.ok) throw new Error('Could not load downloads.');
+        const signature = JSON.stringify(result.items);
+        if (signature === lastDownloadRender) return;
+        lastDownloadRender = signature;
+        downloadsList.replaceChildren();
+        if (!result.items.length) {
+          const empty = document.createElement('p'); empty.className = 'empty';
+          empty.textContent = downloadsSearch.value ? 'No matching downloads.' : 'Your downloads will appear here.';
+          downloadsList.append(empty); return;
+        }
+        for (const item of result.items) {
+          const row = document.createElement('div'); row.className = 'item';
+          const top = document.createElement('div'); top.className = 'top';
+          const name = document.createElement('span'); name.className = 'name';
+          name.textContent = item.filename.split(/[\\/]/).pop() || 'Download'; name.title = name.textContent;
+          const icon = document.createElement('span'); icon.className = 'icon';
+          const extension = /\.([a-z0-9]{1,8})$/i.exec(name.textContent)?.[1];
+          icon.textContent = extension ? extension.slice(0, 4).toUpperCase() : 'FILE';
+          icon.setAttribute('aria-label', extension ? `${extension.toUpperCase()} file` : 'File');
+          top.append(icon, name); row.append(top);
+          const meta = document.createElement('div'); meta.className = 'meta';
+          const unsafe = !['safe', 'accepted'].includes(item.danger);
+          const date = item.startTime ? new Date(item.startTime).toLocaleDateString() : '';
+          let state = item.state === 'complete' ? (item.exists === false ? 'File unavailable' : 'Completed') : item.state === 'interrupted' ? 'Interrupted' : item.paused ? 'Paused' : 'Downloading';
+          if (unsafe) state = 'Blocked or flagged by Chrome';
+          if (item.state === 'in_progress' && item.totalBytes > 0 && !unsafe) state += ` · ${Math.min(100, Math.round(item.bytesReceived / item.totalBytes * 100))}%`;
+          meta.textContent = [state, date].filter(Boolean).join(' · '); row.append(meta);
+          if (item.state === 'complete' && item.exists !== false && !unsafe) {
+            const performAction = async (action) => {
+              try {
+                const response = await chrome.runtime.sendMessage({ type: 'DIA_DOWNLOAD_ACTION', id: item.id, action });
+                if (!response?.ok) throw new Error();
+              } catch { showToast('Could not access this download.', 'error'); }
+            };
+            row.classList.add('is-openable');
+            row.setAttribute('role', 'button');
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('aria-label', `Open ${name.textContent}`);
+            row.addEventListener('click', () => performAction('open'));
+            row.addEventListener('keydown', (event) => {
+              if (event.target !== row || (event.key !== 'Enter' && event.key !== ' ')) return;
+              event.preventDefault();
+              performAction('open');
+            });
+            const actions = document.createElement('div'); actions.className = 'actions';
+            for (const [action, label] of [['show', 'Show in Finder']]) {
+              const button = document.createElement('button'); button.type = 'button';
+              button.title = label; button.setAttribute('aria-label', `${label}: ${name.textContent}`);
+              button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path fill="currentColor" d="M19.99 8.46c.24.53.36.8.36 1.01a1 1 0 0 1-.6.91c-.19.1-.48.1-1.06.1H6.42c-.62 0-.92 0-1.17.15s-.37.43-.64.98L1.7 17.77l.38-11.31c.02-.82.04-1.23.29-1.5s.65-.32 1.46-.42l1.33-.16h2.33c.36 0 .54 0 .71.06s.3.18.58.41l2.43 2.06c.27.22.4.33.55.4c.16.05.33.06.67.07l6.32.24c.26.01.38.02.5.05a1 1 0 0 1 .52.35c.07.1.12.21.23.44" opacity=".2"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.29 19.59h-3.6c-2.83 0-4.25 0-5.13-.88s-.87-2.3-.87-5.12V6.9a2.4 2.4 0 0 1 2.4-2.4h2.06c.51 0 .77 0 1.02.03a4 4 0 0 1 1.82.71c.2.15.4.32.77.66c.38.35.56.52.77.67a4 4 0 0 0 1.82.7c.25.04.5.04 1.02.04h4.45c1.7 0 3.07 1.37 3.07 3.07"/><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.8 10.42h6.87c2.67 0 4 0 4.6.87c.6.88.1 2.12-.89 4.6l-.46 1.17c-.49 1.23-.73 1.84-1.24 2.18c-.5.35-1.16.35-2.48.35H7.38c-2.59 0-3.88 0-4.48-.85c-.6-.86-.16-2.07.72-4.51l.42-1.17c.47-1.28.7-1.92 1.21-2.28c.52-.36 1.2-.36 2.56-.36z"/></svg>';
+              button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                performAction(action);
+              });
+              actions.append(button);
+            }
+            top.append(actions);
+          }
+          downloadsList.append(row);
+        }
+      } catch {
+        if (downloadsVisible && request === downloadRequest) { downloadsList.textContent = 'Could not load downloads.'; lastDownloadRender = ''; }
+      }
+    };
+    const setDownloadsVisible = (visible) => {
+      downloadsVisible = visible;
+      sidebarEl.classList.toggle('is-downloads', visible);
+      if (visible) document.documentElement.setAttribute('data-dia-downloads-open', 'true');
+      else document.documentElement.removeAttribute('data-dia-downloads-open');
+      hiddenInDownloads.forEach(el => { el.style.display = visible ? 'none' : ''; });
+      downloadHost.style.display = visible ? 'block' : 'none';
+      downloadsBtn.classList.toggle('is-active', visible);
+      downloadsBtn.setAttribute('aria-pressed', String(visible));
+      downloadsBtn.setAttribute('aria-label', visible ? 'Return to tabs' : 'Show downloads');
+      clearInterval(downloadPoll);
+      if (visible) { lastDownloadRender = ''; refreshDownloads(); downloadPoll = setInterval(refreshDownloads, 3000); }
+      else { downloadRequest++; downloadsList.replaceChildren(); downloadsSearch.value = ''; }
+    };
+    downloadsBtn.addEventListener('click', () => setDownloadsVisible(!downloadsVisible));
+    downloadsShadow.querySelector('.back').addEventListener('click', () => setDownloadsVisible(false));
+    downloadsSearch.addEventListener('input', () => { clearTimeout(downloadSearchTimer); downloadSearchTimer = setTimeout(refreshDownloads, 180); });
+    cleanupDownloadsView = () => { downloadsVisible = false; document.documentElement.removeAttribute('data-dia-downloads-open'); downloadRequest++; clearInterval(downloadPoll); clearTimeout(downloadSearchTimer); };
 
     const themeCycleBtn = document.createElement('button');
     themeCycleBtn.className = 'dia-sb-icon-btn';
@@ -1731,6 +1865,7 @@
     sidebarEl.appendChild(sbDivider);
     sidebarEl.appendChild(sbNewTabRow);
     sidebarEl.appendChild(sidebarTabsListEl);
+    sidebarEl.appendChild(downloadHost);
     sidebarEl.appendChild(sbFooter);
 
     sidebarEl.addEventListener('mouseenter', () => {
@@ -1993,10 +2128,15 @@
     showToast(`Theme: ${nextEntry.label}`);
   }
 
-  function showToast(message) {
+  function showToast(message, kind = 'success') {
     buildShadowDOM();
     if (!toastEl || !toastTextEl) return;
     toastTextEl.textContent = message;
+    toastEl.dataset.kind = kind;
+    const badge = toastEl.querySelector('.dia-toast-badge');
+    if (badge) badge.innerHTML = kind === 'error' ? ICONLY.close : kind === 'info'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 10v6M12 7h.01"/></svg>'
+      : ICONLY.check;
     toastEl.classList.add('is-visible');
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
@@ -2005,6 +2145,7 @@
   }
 
   const collapsedFolders = new Set();
+  let editingFolderGroupId = null;
 
   async function copyPageUrl(format = 'url', triggerBtn = null) {
     const url = window.location.href;
@@ -2041,15 +2182,15 @@
   }
 
   async function runTidyTabs() {
-    showToast('Tidying open tabs into smart folders…');
+    showToast('Tidying open tabs into smart folders…', 'info');
     try {
       const res = await chrome.runtime.sendMessage({ type: 'DIA_TIDY_TABS' });
       if (res?.message) {
-        showToast(res.message);
+        showToast(res.message, res.ok === false ? 'error' : res.tabsGrouped === 0 ? 'info' : 'success');
       }
       await refreshSidebarTabs();
     } catch {
-      showToast('Could not tidy tabs.');
+      showToast('Could not tidy tabs.', 'error');
     }
   }
 
@@ -2080,7 +2221,7 @@
               optionsUrl: ext.optionsUrl,
               isSelf: ext.isSelf
             });
-            if (!result?.ok && result?.message) showToast(result.message);
+            if (!result?.ok && result?.message) showToast(result.message, 'info');
           });
           tray.appendChild(btn);
         }
@@ -2094,17 +2235,22 @@
     try {
       const res = await chrome.runtime.sendMessage({ type: 'DIA_GROUP_TABS_BY_DOMAIN' });
       if (res?.message) {
-        showToast(res.message);
+        showToast(res.message, res.ok === false ? 'error' : res.tabsGrouped === 0 ? 'info' : 'success');
       }
       await refreshSidebarTabs();
     } catch {
-      showToast('Could not group tabs by domain.');
+      showToast('Could not group tabs by domain.', 'error');
     }
   }
 
   function updateSidebarVisibility() {
     if (!sidebarEl) return;
     const html = document.documentElement;
+    if (settings.enabled === false || !isFullscreenWindow) {
+      sidebarEl.classList.remove('is-visible', 'is-pinned');
+      html.setAttribute('data-dia-sidebar-pinned', 'false');
+      return;
+    }
     const mode = settings.sidebarMode || 'always';
 
     if (leftHoverSensorEl) {
@@ -2222,6 +2368,7 @@
 
   function renderSidebarTabs() {
     if (!sidebarTabsListEl || !sidebarPinnedGridEl) return;
+    if (editingFolderGroupId !== null) return;
     sidebarPinnedGridEl.innerHTML = '';
     if (sidebarFoldersListEl) sidebarFoldersListEl.innerHTML = '';
     sidebarTabsListEl.innerHTML = '';
@@ -2409,6 +2556,65 @@
       groupHdr.appendChild(label);
       groupHdr.appendChild(countSpan);
 
+      if (bucket.groupId >= 0) {
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'dia-sb-folder-rename';
+        renameBtn.type = 'button';
+        renameBtn.title = 'Rename folder';
+        renameBtn.setAttribute('aria-label', `Rename ${folderTitle}`);
+        renameBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L9 17l-4 1 1-4Z"/></svg>';
+        groupHdr.appendChild(renameBtn);
+        const beginRename = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (editingFolderGroupId !== null) return;
+          editingFolderGroupId = bucket.groupId;
+          groupHdr.draggable = false;
+          const input = document.createElement('input');
+          input.className = 'dia-sb-folder-input';
+          input.type = 'text';
+          input.maxLength = 100;
+          input.value = folderTitle;
+          input.setAttribute('aria-label', 'Folder name');
+          label.replaceWith(input);
+          renameBtn.hidden = true;
+          input.focus();
+          input.select();
+          let finished = false;
+          const finish = async (save) => {
+            if (finished) return;
+            finished = true;
+            const title = input.value.trim();
+            try {
+              if (save && title && title !== folderTitle) {
+                const result = await chrome.runtime.sendMessage({ type: 'DIA_RENAME_FOLDER', groupId: bucket.groupId, title });
+                if (!result?.ok) showToast('Could not rename folder.', 'error');
+                else label.textContent = title;
+              }
+            } catch {
+              showToast('Could not rename folder.', 'error');
+            } finally {
+              input.replaceWith(label);
+              renameBtn.hidden = false;
+              groupHdr.draggable = true;
+              editingFolderGroupId = null;
+              await refreshSidebarTabs();
+            }
+          };
+          input.addEventListener('click', (e) => e.stopPropagation());
+          input.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+            if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+          });
+          input.addEventListener('blur', () => finish(true), { once: true });
+        };
+        renameBtn.addEventListener('click', beginRename);
+        renameBtn.addEventListener('keydown', (event) => event.stopPropagation());
+        label.title = 'Double-click to rename folder';
+        label.addEventListener('dblclick', beginRename);
+      }
+
       groupHdr.addEventListener('click', () => {
         if (collapsedFolders.has(folderKey)) {
           collapsedFolders.delete(folderKey);
@@ -2517,8 +2723,8 @@
       },
       {
         kind: 'action-frameless',
-        title: 'Toggle Frameless Window (Hide Top URL Bar)',
-        subtitle: 'Pop tab into/out of a toolbar-less Chrome window with hover vertical sidebar',
+        title: 'Toggle Full Screen',
+        subtitle: 'Use Chrome full screen; hide the toolbar in Chrome settings',
         badge: '⌘⇧D',
         iconSvg: ICONLY.windowFrame
       },
@@ -2768,7 +2974,7 @@
       } else if (chosen.kind === 'action-fullscreen') {
         await chrome.runtime.sendMessage({ type: 'DIA_TOGGLE_FULLSCREEN' });
       } else if (chosen.kind === 'url' || chosen.kind === 'search') {
-        const isNewTabDocument = location.pathname.endsWith('/newtab/newtab.html');
+        const isNewTabDocument = /\/newtab\/(newtab|recovery)\.html$/.test(location.pathname);
         const shouldOpenInNewTab = openInNewTab || (currentPaletteMode !== 'url' && !isNewTabDocument);
         await chrome.runtime.sendMessage({
           type: 'DIA_NAVIGATE',
@@ -2784,7 +2990,7 @@
   }
 
   async function openPalette(mode = 'command') {
-    if (settings.enabled === false) return;
+    if (settings.enabled === false || !isFullscreenWindow) return;
     buildShadowDOM();
     applyCommandBarStyles();
     isOpen = true;
@@ -2847,7 +3053,7 @@
   }
 
   function onMouseMove(e) {
-    if (settings.enabled === false) return;
+    if (settings.enabled === false || !isFullscreenWindow) return;
     if (e.clientX <= 12 && settings.sidebarMode !== 'off') {
       if (sidebarHideTimer) clearTimeout(sidebarHideTimer);
       if (!isSidebarHoverOpen) {
@@ -2897,7 +3103,7 @@
   }
 
   function onKeyDown(e) {
-    if (settings.enabled === false) return;
+    if (settings.enabled === false || !isFullscreenWindow) return;
     const isMeta = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
 
@@ -3001,8 +3207,8 @@
     }
     isSidebarPinned = settings.sidebarMode === 'pinned';
     if (hostEl) {
-      hostEl.style.display = settings.enabled === false ? 'none' : '';
-      if (settings.enabled === false) closePalette(false);
+      hostEl.style.display = settings.enabled === false || !isFullscreenWindow ? 'none' : '';
+      if (settings.enabled === false || !isFullscreenWindow) closePalette(false);
     }
     applyCommandBarStyles();
     updateSidebarVisibility();
@@ -3026,14 +3232,16 @@
     } else if (message.type === 'DIA_WINDOW_STATE_CHANGED') {
       isFullscreenWindow = Boolean(message.isFullscreen);
       isFramelessWindow = Boolean(message.isFrameless);
+      if (hostEl) hostEl.style.display = settings.enabled === false || !isFullscreenWindow ? 'none' : '';
+      if (!isFullscreenWindow) closePalette(false);
       updateSidebarVisibility();
       sendResponse({ ok: true });
     } else if (message.type === 'DIA_SETTINGS_UPDATED' && message.settings) {
       settings = { ...settings, ...message.settings };
       isSidebarPinned = settings.sidebarMode === 'pinned';
       if (hostEl) {
-        hostEl.style.display = settings.enabled === false ? 'none' : '';
-        if (settings.enabled === false) closePalette(false);
+        hostEl.style.display = settings.enabled === false || !isFullscreenWindow ? 'none' : '';
+        if (settings.enabled === false || !isFullscreenWindow) closePalette(false);
       }
       applyCommandBarStyles();
       updateSidebarVisibility();
@@ -3043,6 +3251,7 @@
   }
 
   window.__workspaceCommandCleanup = () => {
+    cleanupDownloadsView();
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('keydown', onKeyDown, true);
     document.removeEventListener('click', onLinkClick, true);
@@ -3075,7 +3284,7 @@
       setWorkspaceName('Workspace');
     }
 
-    hostEl.style.display = settings.enabled === false ? 'none' : '';
+    hostEl.style.display = 'none';
     applyCommandBarStyles();
     updateSidebarVisibility();
 
@@ -3089,6 +3298,8 @@
     } catch {
       // Ignore startup error
     }
+
+    hostEl.style.display = settings.enabled === false || !isFullscreenWindow ? 'none' : '';
 
     await refreshSidebarTabs();
     await refreshTopBarExtensions();

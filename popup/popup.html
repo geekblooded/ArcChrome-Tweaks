@@ -19,37 +19,17 @@
          ========================================================= -->
     <div id="welcomeView" class="dia-welcome-shell" hidden>
       <div class="dia-welcome-card">
-        <div class="dia-welcome-badge">
-          <img src="../icons/icon-128.png" alt="ArcChrome Logo" class="dia-welcome-logo" />
-        </div>
-        <h1 class="dia-welcome-title">Arc for Chrome</h1>
-        <p class="dia-welcome-subtitle">
-          Transform Google Chrome into the fluid Arc experience with vertical tabs, floating command bar, and unified themes.
-        </p>
-
-        <div class="dia-power-action-box">
-          <button type="button" id="bigPowerBtn" class="dia-big-power-btn" title="Turn ON Arc Experience">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v10M18.36 5.64a9 9 0 1 1-12.73 0"></path>
-            </svg>
+        <div class="dia-welcome-hero" aria-hidden="true"></div>
+        <img src="assets/onboarding-logo.png" alt="" class="dia-welcome-logo" />
+        <div class="dia-welcome-content" id="welcomeIntro">
+          <h1 class="dia-welcome-title">Turn Arc to Chrome</h1>
+          <p class="dia-welcome-subtitle">Turn Google Chrome into a chill version of the Arc browser! Think vertical tabs, a floating command bar, and nested folders for easy tab organization. Plus, quick keyboard shortcuts for all the techie-nerds out there!</p>
+          <button type="button" id="bigPowerBtn" class="dia-big-power-btn" aria-label="Turn on Arc experience and enter full screen" title="Enter full screen">
+            <span class="dia-activate-label">Activate Arc Experience</span><span class="dia-activate-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
           </button>
-          <span class="dia-power-caption">Click to Turn ON</span>
+          <span id="setupError" class="dia-setup-error" role="alert" hidden></span>
         </div>
 
-        <div class="dia-welcome-features">
-          <div class="dia-welcome-feat-pill">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="4"></rect><path d="M9.5 4V20"></path></svg>
-            <span>Vertical Sidebar</span>
-          </div>
-          <div class="dia-welcome-feat-pill">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11.5" cy="11.5" r="8"></circle><path d="M17.5 17.5L21 21"></path></svg>
-            <span>Command Bar ⌘K</span>
-          </div>
-          <div class="dia-welcome-feat-pill">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 0 0 18v-18z" fill="currentColor"></path></svg>
-            <span>12 Palettes</span>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -62,11 +42,11 @@
           <div class="dia-brand-badge">
             <img src="../icons/icon-48.png" alt="Logo" width="22" height="22" style="object-fit: contain; display: block;" />
           </div>
-          <span class="dia-brand-name">Workspace</span>
+
         </div>
 
         <nav class="dia-rail-nav" id="railNav">
-          <button type="button" class="dia-rail-item" data-category="page">
+          <button type="button" class="dia-rail-item is-active" data-category="page">
             <span class="dia-rail-icon">
               <!-- Iconly Document Duotone -->
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -125,32 +105,13 @@
             <span>Shortcuts</span>
           </button>
 
-          <button type="button" class="dia-rail-item is-active" data-category="all">
-            <span class="dia-rail-icon">
-              <!-- Iconly Star / Patches Duotone -->
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3L14.2 8.5L20 10.5L14.2 12.5L12 18L9.8 12.5L4 10.5L9.8 8.5L12 3Z" fill="currentColor" fill-opacity="0.22"></path>
-                <path d="M19 15.5L19.7 17.3L21.5 18L19.7 18.7L19 20.5L18.3 18.7L16.5 18L18.3 17.3L19 15.5Z"></path>
-              </svg>
-            </span>
-            <span>Patches</span>
-          </button>
+
         </nav>
 
         <!-- Bottom Light/Dark Theme Switcher & Master Switch -->
         <div class="dia-rail-footer">
-          <div class="dia-theme-pill" id="uiThemeSelector" title="Light / Dark Appearance">
-            <button type="button" class="dia-theme-btn" data-ui-theme="auto">Auto</button>
-            <button type="button" class="dia-theme-btn is-active" data-ui-theme="light">Light</button>
-            <button type="button" class="dia-theme-btn" data-ui-theme="dark">Dark</button>
-          </div>
-          <label class="dia-master-row" title="Enable or disable Workspace UI">
-            <span>Enabled</span>
-            <label class="dia-switch dia-switch--sm">
-              <input type="checkbox" id="enabledToggle" checked />
-              <span class="dia-slider"></span>
-            </label>
-          </label>
+          <div class="dia-toolbar-tip"><strong>Tip</strong><p>Hide the toolbar: <b>View</b> → uncheck <b>Always Show Toolbar in Full Screen</b> (<b>⇧⌘F</b>).</p></div>
+
         </div>
       </aside>
 
@@ -173,7 +134,7 @@
                 </svg>
               </button>
             </div>
-            <h1 class="dia-header-title" id="paneTitle">Patches</h1>
+            <h1 class="dia-header-title" id="paneTitle">Page</h1>
           </div>
 
           <div class="dia-header-right">
@@ -189,10 +150,11 @@
                 autocomplete="off"
               />
             </div>
-            <button type="button" id="headerPowerToggleBtn" class="dia-power-header-btn" title="Turn Off Arc Experience">
+            <button type="button" id="themeToggleBtn" class="dia-theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode"><span aria-hidden="true">☀</span></button>
+            <button type="button" id="headerPowerToggleBtn" class="dia-power-header-btn" title="Exit Arc" aria-label="Exit Arc">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v10M18.36 5.64a9 9 0 1 1-12.73 0"></path>
-              </svg>
+              </svg><span class="dia-exit-label">Exit Arc</span>
             </button>
           </div>
         </header>
@@ -306,8 +268,8 @@
                   </svg>
                 </div>
                 <div class="dia-row-info">
-                  <div class="dia-row-title">Hide toolbar (Frameless window)</div>
-                  <div class="dia-row-sub">Hide native top bar in windowed mode (⌘⇧D)</div>
+                  <div class="dia-row-title">Full-screen mode</div>
+                  <div class="dia-row-sub">Use Chrome full screen; hide toolbar in Chrome settings (⌘⇧D)</div>
                 </div>
                 <div class="dia-row-controls">
                   <label class="dia-switch">
@@ -585,7 +547,7 @@
               </label>
             </div>
 
-            <div class="dia-card-row">
+            <div class="dia-card-row" hidden>
               <div class="dia-row-info">
                 <div class="dia-row-title">When to Show Bezel Frame</div>
               </div>
@@ -729,17 +691,20 @@
         <div id="detail-shortcuts" class="dia-detail-view" hidden>
           <div class="dia-group-label">Active Keyboard Shortcuts</div>
           <div class="dia-card-stack">
-            <div class="dia-sc-row"><span>Open Command Bar</span><kbd>⌘K</kbd> / <kbd>⌘T</kbd></div>
-            <div class="dia-sc-row"><span>Edit Current URL in Bar</span><kbd>⌘L</kbd> / <kbd>⌘⇧L</kbd></div>
+            <div class="dia-sc-row"><span>Open Command Bar</span><kbd>⌘K</kbd></div>
+            <div class="dia-sc-row"><span>New Chrome Tab</span><kbd>⌘T</kbd></div>
+            <div class="dia-sc-row"><span>Edit Current URL in Bar</span><kbd>⌘⇧L</kbd></div>
             <div class="dia-sc-row"><span>Pin / Unpin Vertical Sidebar</span><kbd>⌘S</kbd></div>
             <div class="dia-sc-row"><span>Close Highlighted Tab in Switcher</span><kbd>⌘W</kbd></div>
             <div class="dia-sc-row"><span>Copy Current URL + Toast</span><kbd>⌘⇧C</kbd></div>
             <div class="dia-sc-row"><span>Copy URL as Markdown</span><kbd>⌘⇧⌥C</kbd></div>
-            <div class="dia-sc-row"><span>Frameless Window (Hide Top Bar)</span><kbd>⌘⇧D</kbd></div>
+            <div class="dia-sc-row"><span>Toggle Full Screen</span><kbd>⌘⇧D</kbd></div>
             <div class="dia-sc-row"><span>Tidy Tabs by Subject</span><kbd>⌥⌘T</kbd></div>
             <div class="dia-sc-row"><span>Group Tabs by Domain</span><kbd>⌥⌘G</kbd></div>
             <div class="dia-sc-row"><span>Toggle Edge-to-Edge (0px)</span><kbd>⌥⌘E</kbd></div>
           </div>
+
+          <p class="dia-shortcut-note">Chrome may reserve shortcuts or use them differently depending on the page and keyboard focus. Change available extension shortcuts below.</p>
 
           <button type="button" id="configureShortcutsBtn" class="dia-secondary-btn">
             Configure Chrome Extension Shortcuts…

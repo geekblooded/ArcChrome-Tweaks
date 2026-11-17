@@ -25,6 +25,7 @@
         <li><strong>Open tab titles and URLs:</strong> Used to display and search tabs, switch between them, organize tabs into groups, and provide navigation controls.</li>
         <li><strong>Current page title and URL:</strong> Used by in-page controls and when you invoke URL copy or navigation features.</li>
         <li><strong>Installed extension details:</strong> Chrome’s extension-management API is used to show installed extension information and icons in the interface.</li>
+        <li><strong>Downloads:</strong> When you open the downloads sidebar, the extension reads Chrome download records, including file names, status, dates and progress, to display and search them locally. It can open a completed file or reveal it in your file manager when you choose an action. Download records are not sent to the developer.</li>
         <li><strong>Your preferences:</strong> Settings are stored using Chrome Storage Sync and Chrome local storage. Some icon data is cached locally.</li>
       </ul>
 
@@ -41,7 +42,7 @@
       <p>Preferences and cached icon data remain in Chrome storage until cleared, removed by the extension, or deleted when you uninstall the extension. Chrome Sync data can also be managed through your Chrome and Google account settings.</p>
 
       <h2>Permissions and site access</h2>
-      <p>The extension requests <code>storage</code> for preferences and icon cache; <code>tabs</code> and <code>tabGroups</code> to show, search, navigate, and organize tabs; <code>sessions</code> to restore recently closed items; <code>scripting</code> to add its interface and styling to eligible tabs; and <code>management</code> to display installed extension details. It requests access to all website URLs so its sidebar, command bar, shortcuts, and page styling can work across sites. Content scripts cannot run on Chrome Web Store pages or Chrome internal pages, and some browser-controlled pages remain unavailable.</p>
+      <p>The extension requests <code>storage</code> for preferences and icon cache; <code>tabs</code> and <code>tabGroups</code> to show, search, navigate, and organize tabs; <code>sessions</code> to restore recently closed items; <code>webNavigation</code> to detect eligible navigation failures and show a recovery page; <code>downloads</code> to display and search downloads and reveal files; <code>downloads.open</code> to open a completed download when requested; <code>scripting</code> to add its interface and styling to eligible tabs; and <code>management</code> to display installed extension details. It requests access to all website URLs so its sidebar, command bar, shortcuts, and page styling can work across sites. Content scripts cannot run on Chrome Web Store pages or Chrome internal pages, and some browser-controlled pages remain unavailable.</p>
       <p>Settings may be stored in Chrome Sync and local extension storage. Uninstalling the extension removes its local extension data through Chrome; synced preferences can be managed through Chrome Sync settings.</p>
 
       <h2>Changes and contact</h2>

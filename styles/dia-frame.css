@@ -13,6 +13,10 @@
   --dia-sidebar-pinned-width: 248px;
 }
 
+html[data-dia-downloads-open="true"] {
+  --dia-sidebar-pinned-width: 285.2px;
+}
+
 /* Base non-invasive fixed overlay container */
 #dia-chrome-tweaks-frame-root {
   position: fixed !important;
@@ -134,10 +138,11 @@ html[data-dia-material="glass"] .dia-frame-inner-cutout {
 
 /* Optional content-inset mode */
 html[data-dia-bezel-active="true"][data-dia-inset-content="true"]:not([data-dia-edge-to-edge="true"]) body {
-  padding-top: var(--dia-bezel-size) !important;
-  padding-left: var(--dia-bezel-size) !important;
-  padding-right: var(--dia-bezel-size) !important;
-  padding-bottom: var(--dia-bezel-size) !important;
+  margin: var(--dia-bezel-size) !important;
+  width: calc(100% - 2 * var(--dia-bezel-size)) !important;
+  height: calc(100vh - 2 * var(--dia-bezel-size)) !important;
+  overflow: auto !important;
+  transform: translateZ(0) !important;
   box-sizing: border-box !important;
 }
 
@@ -147,6 +152,11 @@ html[data-dia-sidebar-pinned="true"] body {
   width: calc(100% - var(--dia-sidebar-pinned-width)) !important;
   box-sizing: border-box !important;
   transition: margin-left 200ms cubic-bezier(0.16, 1, 0.3, 1), width 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-dia-sidebar-pinned="true"][data-dia-bezel-active="true"][data-dia-inset-content="true"]:not([data-dia-edge-to-edge="true"]) body {
+  margin-left: var(--dia-sidebar-pinned-width) !important;
+  width: calc(100% - var(--dia-sidebar-pinned-width) - var(--dia-bezel-size)) !important;
 }
 
 /* Do not show outer chrome bezel when an HTML5 video/element itself enters fullscreen */

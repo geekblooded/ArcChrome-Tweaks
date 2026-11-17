@@ -11,9 +11,9 @@ ArcChrome Tweaks
 Bring an Arc-inspired sidebar, command bar, tab organization, and workspace controls to Chrome.
 
 **Detailed description**  
-Moving from Arc to Chrome? ArcChrome Tweaks brings familiar browsing patterns to Chrome: a left-side tab sidebar, command bar, searchable tabs, tab grouping, URL actions, page framing, and a custom new-tab workspace. Keyboard shortcuts help you move through these controls. Some features vary by platform and cannot run on Chrome-restricted pages.
+Moving from Arc to Chrome? ArcChrome Tweaks brings familiar browsing patterns to Chrome: a left-side tab sidebar, searchable downloads, command bar, searchable tabs, tab grouping, URL actions, page framing, and a custom new-tab workspace. Keyboard shortcuts help you move through these controls. Some features vary by platform and cannot run on Chrome-restricted pages.
 
-The extension reads tab titles and URLs to display, search, navigate, and organize tabs. Its content scripts add the sidebar, command bar, and visual page styling on eligible websites. The reviewed source does not send browsing history or page contents to a developer-operated backend. Google’s favicon service receives a site URL or domain when an icon is requested. Preferences use Chrome Storage Sync and local storage. See the privacy policy for details.
+The extension reads tab titles and URLs to display, search, navigate, and organize tabs. It reads download names and status locally to display and search downloads, and opens or reveals files only when requested. Its content scripts add the sidebar, command bar, and visual page styling on eligible websites. The reviewed source does not send browsing history, download records, or page contents to a developer-operated backend. Google’s favicon service receives a site URL or domain when an icon is requested. Preferences use Chrome Storage Sync and local storage. See the privacy policy for details.
 
 Some pages managed by Chrome, such as Chrome Web Store pages and internal chrome:// pages, do not allow content-script features. Tab organization and shortcut behavior may vary by platform.
 
@@ -44,6 +44,7 @@ ArcChrome Tweaks provides browser interface, tab navigation, and tab organizatio
 
 - **Browsing activity (tab URLs and titles):** The extension accesses open-tab URLs and titles to display and search tabs, switch between tabs, organize tabs into groups, and provide navigation controls. The current page URL and title may be used when you invoke copy or navigation features.
 - **Extension inventory:** The extension uses Chrome's extension-management API to display installed extension information and icons in its interface.
+- **Downloads:** The extension reads download names, dates, status and progress to display and search them locally, and can open a completed download or reveal it in the file manager at the user's request. Download records are not sent to the developer.
 - **Preferences:** The extension stores your feature and appearance settings using Chrome Storage Sync and Chrome local storage. Some icon data is cached locally.
 
 **How information is used and shared**
@@ -91,6 +92,9 @@ ArcChrome Tweaks adapts Chrome’s navigation interface for people familiar with
 - **`tabs`:** Read tab titles and URLs to display, search, switch, group, pin, move, create, update, and close tabs as requested through extension controls.
 - **`tabGroups`:** Create and manage tab groups for the tab organization features.
 - **`sessions`:** Restore recently closed tabs or windows when the user invokes restore.
+- **`webNavigation`:** Detect eligible navigation failures for the recovery screen.
+- **`downloads`:** Display and search download history and reveal a selected completed file.
+- **`downloads.open`:** Open a selected completed download in response to a user action.
 - **`scripting`:** Add or refresh the extension's sidebar, command bar, and page styling on eligible open tabs when needed.
 - **`management`:** Display the user's installed extensions and related icons in the extension interface.
 - **Host access `<all_urls>`:** Run the sidebar, command bar, keyboard interactions, and optional page framing on eligible websites. Chrome internal pages and other restricted pages are excluded by browser limitations.
@@ -113,6 +117,9 @@ These are drafting aids, not preselected dashboard answers. The account owner mu
 - `tabs`: display/search/switch/rearrange tabs and create or update tabs/windows.
 - `tabGroups`: create and manage groups for organization features.
 - `sessions`: restore recently closed tabs/windows.
+- `webNavigation`: detect eligible navigation failures for the recovery screen.
+- `downloads`: show and search download records and reveal files on request.
+- `downloads.open`: open a completed download on request.
 - `scripting`: inject extension UI into eligible tabs when enabled or needed.
 - `management`: display installed extensions and their icons in extension UI.
 - `<all_urls>` host access: run the in-page sidebar, command bar, and viewport styling on eligible sites. Chrome-restricted pages remain unavailable.

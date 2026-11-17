@@ -17,9 +17,9 @@ Inspired by [`JaceThings/DiaTweaks`](https://github.com/JaceThings/DiaTweaks) an
 ## ✨ Features Built (`v1.1.0` — `DiaPatches.dylib` Parity)
 
 1. **Hiding the Top URL Bar (Both Windowed & Full-Screen Modes):**
-   - **Windowed Mode — Frameless Dia Window (`⌘⇧D`):** Pops any tab into a toolbar-less Chrome `popup` window (`0px` native top URL bar!) paired with our **In-Page Hover Vertical Tab Sidebar**.
+   - **Windowed mode:** The sidebar and bezel appear inside normal Chrome windows. Chrome’s native toolbar remains visible.
    - **Full-Screen Mode — Native Immersive Toolbar Hide (`⌃⌘F` + `⇧⌘F`):** Collapses Chrome's top bar natively in macOS Full Screen while keeping native Vertical Tabs.
-   - **Top-Edge Hover URL Pill (`_DPRevealToolbarOnHoverEntry`):** Hovering the top center edge in Frameless or Full-Screen mode peeks a floating Dia URL & navigation bar.
+   - **Top-Edge Hover URL Pill (`_DPRevealToolbarOnHoverEntry`):** Hovering the top center edge in Full-Screen mode peeks a floating Dia URL & navigation bar.
 2. **In-Page Collapsible & Pinnable Dia Vertical Sidebar (`DPSidebar`):**
    - Slides out smoothly when hovering the **left edge (`<= 10px`)** of the viewport, or pins open via **`⌘S`**.
    - Displays **Pinned Tabs** (`_DPHidePinnedTabBorderEntry` supported), **Clickable URL Pill + 1-click Copy**, **Tidy Tabs (`✨`) & Domain Group (`📁`)** buttons, and all **Open Tabs & Colored Tab Groups**.
@@ -48,12 +48,12 @@ Inspired by [`JaceThings/DiaTweaks`](https://github.com/JaceThings/DiaTweaks) an
 | Shortcut | Action | `DiaPatches.dylib` Equivalent |
 | :--- | :--- | :--- |
 | **`⌘K`** | Toggle Floating Dia Command Bar | `_DPCommandBarEntry` |
-| **`⌘⇧L`** (or **`⌘L`** in Frameless) | Open Dia Command Bar with current URL selected | `_DPCommandBarEntry` |
+| **`⌘⇧L`** (or **`⌘L`**) | Open Dia Command Bar with current URL selected | `_DPCommandBarEntry` |
 | **`⌘T`** | Open Dia New Tab with Command Bar focused | `_DPOpenOverBlank` |
 | **`⌘⇧C`** | Copy Current URL + Show Dia Toast | `_DPCopyToastEntry` |
 | **`⌘⇧⌥C`** | Copy Current URL as Markdown `[Title](URL)` + Toast | `_DPCopyURLMarkdown` |
 | **`⌘S`** | Pin / Unpin In-Page Dia Vertical Tab Sidebar | `DPSidebar` |
-| **`⌘⇧D`** | Toggle Frameless Dia Window (Hide Top URL Bar in Windowed Mode) | `_DPHideToolbarEntry` |
+| **`⌘⇧D`** | Toggle Chrome Full Screen | `_DPHideToolbarEntry` |
 | **`⌥⌘T`** | Tidy Tabs — Smart Group Open Tabs by Subject | `_DPTidyTabsEntry` |
 | **`⌥⌘G`** | Group Open Tabs by Domain | `_DPGroupTabsEntry` |
 | **`⌥⌘E`** | Toggle Edge-to-Edge Web Pages (`0px` vs Padded Bezel) | `_DPEdgeToEdgeEntry` |

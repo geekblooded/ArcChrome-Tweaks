@@ -8,6 +8,9 @@
     "tabs",
     "tabGroups",
     "sessions",
+    "webNavigation",
+    "downloads",
+    "downloads.open",
     "scripting",
     "management"
   ],
@@ -73,7 +76,7 @@
         "default": "Alt+Shift+F",
         "mac": "Command+Shift+D"
       },
-      "description": "Toggle Frameless Dia Window Mode (Hide Chrome Top URL Bar)"
+      "description": "Toggle Chrome Full Screen"
     }
   }
 }

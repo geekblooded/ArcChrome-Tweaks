@@ -11,15 +11,15 @@
  */
 
 const DEFAULT_SETTINGS = {
-  enabled: true,
-  activationMode: 'always', // 'always' | 'fullscreen'
+  enabled: false,
+  activationMode: 'fullscreen',
   edgeToEdge: false,        // _DPEdgeToEdgeEntry
   bezelSize: 10,
   cornerRadius: 12,
   squareSidebarCorners: false, // _DPSquareSidebarCornersEntry
   frameColor: '#ebecf7',
   framePreset: 'arc-lavender', // 'arc-lavender' | 'frost' | 'warm-sand' | 'mint-sage' | 'rose-quartz' | 'sky-breeze' | 'obsidian' | 'glass' | 'arc-navy' | 'warm-clay' | 'midnight-purple' | 'forest-night' | 'custom'
-  insetContent: false,
+  insetContent: true,
   showInnerBorder: true,
   commandBarEnabled: true,
   openNewTabInCommandBar: true, // _DPOpenOverBlank
@@ -85,8 +85,10 @@ async function injectIntoAllOpenTabs() {
 
 chrome.runtime.onInstalled.addListener(async () => {
   try {
-    const existing = await chrome.storage.sync.get(['uiTheme', 'userChangedTheme', 'framePreset', 'frameColor']);
-    const nextSettings = { ...DEFAULT_SETTINGS };
+    const existing = await chrome.storage.sync.get(null);
+    const { arcInsetDefaultMigrated } = await chrome.storage.local.get('arcInsetDefaultMigrated');
+    const nextSettings = { ...DEFAULT_SETTINGS, ...existing, activationMode: 'fullscreen' };
+    if (!arcInsetDefaultMigrated) nextSettings.insetContent = true;
     if (existing && existing.userChangedTheme && existing.uiTheme) {
       nextSettings.uiTheme = existing.uiTheme;
       nextSettings.userChangedTheme = true;
@@ -95,6 +97,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     }
     await chrome.storage.sync.set(nextSettings);
     await chrome.storage.local.set(nextSettings);
+    await chrome.storage.local.set({ arcInsetDefaultMigrated: true });
   } catch (err) {
     console.error('[ArcChrome-Tweaks] Failed to initialize settings:', err);
   }
@@ -125,42 +128,15 @@ async function sendToTabWithInjectionFallback(tab, payload) {
 
 async function toggleFramelessWindow(sourceTab) {
   try {
-    let tab = sourceTab;
-    if (!tab || !tab.id) {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      tab = activeTab;
+    const win = sourceTab?.windowId
+      ? await chrome.windows.get(sourceTab.windowId)
+      : await chrome.windows.getLastFocused();
+    if (win.type !== 'normal') {
+      return { ok: false, error: 'Full screen is available in a normal Chrome window.' };
     }
-    const win = tab && tab.windowId
-      ? await chrome.windows.get(tab.windowId)
-      : await chrome.windows.getCurrent();
-
-    // A popup window is Chrome's extension-level way to remove the tab strip and omnibox.
-    if (win.type === 'popup' && tab && tab.id) {
-      const allWindows = await chrome.windows.getAll({});
-      let normalWin = allWindows.find((w) => w.type === 'normal' && w.id !== win.id);
-      if (!normalWin) {
-        normalWin = await chrome.windows.create({ tabId: tab.id, type: 'normal', focused: true });
-        await chrome.windows.remove(win.id);
-        notifyWindowMode(tab.id, normalWin.id);
-        return { ok: true, mode: 'normal', windowId: normalWin.id };
-      }
-      if (normalWin) {
-        await chrome.tabs.move(tab.id, { windowId: normalWin.id, index: -1 });
-        await chrome.tabs.update(tab.id, { active: true });
-        await chrome.windows.remove(win.id);
-        await chrome.windows.update(normalWin.id, { focused: true });
-        notifyWindowMode(tab.id, normalWin.id);
-        return { ok: true, mode: 'normal' };
-      }
-    }
-
-    if (win.type !== 'popup' && tab?.id) {
-      const popup = await chrome.windows.create({ tabId: tab.id, type: 'popup', focused: true });
-      notifyWindowMode(tab.id, popup.id);
-      return { ok: true, mode: 'frameless', windowId: popup.id };
-    }
-
-    return { ok: false, mode: win.type === 'popup' ? 'frameless' : 'normal' };
+    const state = win.state === 'fullscreen' ? 'normal' : 'fullscreen';
+    await chrome.windows.update(win.id, { state });
+    return { ok: true, state };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
@@ -327,123 +303,14 @@ async function groupTabsByDomain(windowId) {
 }
 
 const customTabFolderAssignment = new Map();
-const popupChildTabs = new Map();
-const popupChildTabsInFlight = new Set();
-
-// Convert fresh one-tab normal windows while the Arc experience is enabled.
-// A short settling window lets Chrome finish creating the initial tab and avoids
-// disrupting restored windows that contain multiple tabs.
-const pendingNewWindowIds = new Set();
-const processingNewWindowIds = new Set();
-
-async function frameNewWindow(windowId) {
-  if (!pendingNewWindowIds.has(windowId) || processingNewWindowIds.has(windowId)) return;
-  processingNewWindowIds.add(windowId);
-
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    const { enabled = true } = await chrome.storage.sync.get({ enabled: true });
-    if (!enabled) return;
-
-    const win = await chrome.windows.get(windowId);
-    if (win.type !== 'normal') return;
-
-    const tabs = await chrome.tabs.query({ windowId });
-    if (tabs.length !== 1) return;
-
-    const tab = tabs[0];
-    if (tab.openerTabId && isInjectableUrl(tab.pendingUrl || tab.url)) {
-      try {
-        const opener = await chrome.tabs.get(tab.openerTabId);
-        const openerWindow = await chrome.windows.get(opener.windowId);
-        if (openerWindow.type === 'popup') return;
-      } catch {
-        // Continue with the ordinary new-window handoff if its opener disappeared.
-      }
-    }
-    const isNewTabPage = /^chrome:\/\/newtab(?:\/|$)/i.test(tab.url || '');
-    if (isNewTabPage) {
-      // Keep Chrome's native new-window/new-tab surface in its original
-      // window; replacing it with a popup can produce duplicate windows.
-      return;
-    } else if (tab.id) {
-      const popup = await chrome.windows.create({ tabId: tab.id, type: 'popup', focused: true });
-      try {
-        await chrome.windows.remove(windowId);
-      } catch {
-        // Chrome may close an empty source window automatically.
-      }
-      notifyWindowMode(tab.id, popup.id);
-    }
-
-    await broadcastTabsUpdated();
-  } catch {
-    // The window may have been closed or changed while Chrome was creating it.
-  } finally {
-    pendingNewWindowIds.delete(windowId);
-    processingNewWindowIds.delete(windowId);
-  }
-}
-
-chrome.windows.onCreated.addListener((win) => {
-  if (win.type !== 'normal' || typeof win.id !== 'number') return;
-  pendingNewWindowIds.add(win.id);
-  frameNewWindow(win.id);
-});
-
-chrome.tabs.onCreated.addListener((tab) => {
-  if (pendingNewWindowIds.has(tab.windowId)) {
-    frameNewWindow(tab.windowId);
-  }
-  if (tab.openerTabId && typeof tab.id === 'number') {
-    popupChildTabs.set(tab.id, tab.openerTabId);
-    adoptPopupChildTab(tab.id);
-    setTimeout(() => adoptPopupChildTab(tab.id), 100);
-  }
-});
-
 function getFaviconFallback(url) {
   if (!url || !/^https?:\/\//i.test(url)) return '';
   return `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}`;
 }
 
-async function adoptPopupChildTab(childTabId) {
-  const openerTabId = popupChildTabs.get(childTabId);
-  if (!openerTabId || popupChildTabsInFlight.has(childTabId)) return;
-  popupChildTabsInFlight.add(childTabId);
-
-  try {
-    const [childTab, openerTab] = await Promise.all([
-      chrome.tabs.get(childTabId),
-      chrome.tabs.get(openerTabId)
-    ]);
-    const url = childTab.pendingUrl || childTab.url || '';
-    if (!isInjectableUrl(url)) return;
-
-    const openerWindow = await chrome.windows.get(openerTab.windowId);
-    if (openerWindow.type !== 'popup') {
-      popupChildTabs.delete(childTabId);
-      return;
-    }
-
-    if (childTab.windowId !== openerWindow.id) {
-      await chrome.tabs.move(childTabId, { windowId: openerWindow.id, index: -1 });
-    }
-    await chrome.tabs.update(childTabId, { active: true });
-    await chrome.windows.update(openerWindow.id, { focused: true });
-    notifyWindowMode(childTabId, openerWindow.id);
-    await broadcastTabsUpdated();
-    popupChildTabs.delete(childTabId);
-  } catch {
-    // Keep a pending entry until the URL arrives through tabs.onUpdated.
-  } finally {
-    popupChildTabsInFlight.delete(childTabId);
-  }
-}
-
 async function tidyTabsBySubject(windowId) {
   try {
-    const allTabs = (await getEnrichedOpenTabs()).filter((tab) => !windowId || tab.windowId === windowId);
+    const allTabs = await getEnrichedOpenTabs();
     const unpinned = allTabs.filter((t) => !t.pinned && t.id);
     if (unpinned.length === 0) {
       return { ok: true, groupsCreated: 0, tabsGrouped: 0, message: 'There are no loose tabs to tidy.' };
@@ -453,22 +320,19 @@ async function tidyTabsBySubject(windowId) {
     const bySubject = new Map();
     for (const tab of unpinned) {
       const subject = classifyTabIntentProject(tab, sharedProjectMap);
-      if (!bySubject.has(subject)) bySubject.set(subject, []);
-      bySubject.get(subject).push(tab.id);
+      const key = `${tab.windowId}:${subject}`;
+      if (!bySubject.has(key)) bySubject.set(key, { subject, tabIds: [] });
+      bySubject.get(key).tabIds.push(tab.id);
     }
 
     let groupsCreated = 0;
     let tabsGrouped = 0;
     let colorIdx = 0;
 
-    for (const [subject, tabIds] of bySubject.entries()) {
+    for (const { subject, tabIds } of bySubject.values()) {
       if (tabIds.length === 0) continue;
       const color = TAB_GROUP_COLORS[colorIdx % TAB_GROUP_COLORS.length];
       colorIdx++;
-
-      for (const tid of tabIds) {
-        customTabFolderAssignment.set(tid, { title: subject, color });
-      }
 
       if (tabIds.length > 0) {
         try {
@@ -480,7 +344,7 @@ async function tidyTabsBySubject(windowId) {
             });
           }
         } catch {
-          // Fallback to customTabFolderAssignment if window type does not support native tabGroups
+          continue;
         }
       }
 
@@ -675,6 +539,10 @@ chrome.commands.onCommand.addListener(async (command) => {
       return;
     }
 
+    const { enabled = false } = await chrome.storage.sync.get({ enabled: false });
+    const activeWindow = await chrome.windows.get(activeTab.windowId);
+    if (!enabled || activeWindow.state !== 'fullscreen') return;
+
     if (command === 'copy-current-url') {
       await sendToTabWithInjectionFallback(activeTab, {
         type: 'DIA_COPY_CURRENT_URL',
@@ -701,6 +569,15 @@ chrome.commands.onCommand.addListener(async (command) => {
 chrome.windows.onBoundsChanged.addListener(async (win) => {
   try {
     const isFullscreen = win.state === 'fullscreen';
+    const session = await chrome.storage.session.get(['arcFullscreenWindowId', 'arcSetupWindowId']);
+    if (isFullscreen && session.arcSetupWindowId === win.id && session.arcFullscreenWindowId !== win.id) {
+      await chrome.storage.session.set({ arcFullscreenWindowId: win.id });
+    }
+    if (!isFullscreen && session.arcFullscreenWindowId === win.id) {
+      await chrome.storage.session.remove(['arcFullscreenWindowId', 'arcSetupWindowId']);
+      await chrome.storage.sync.set({ enabled: false });
+      await chrome.storage.local.set({ enabled: false });
+    }
     const isFrameless = win.type === 'popup';
     const tabs = await chrome.tabs.query({ active: true, windowId: win.id });
     for (const tab of tabs) {
@@ -748,7 +625,7 @@ async function broadcastTabsUpdated() {
 
 chrome.tabs.onCreated.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onRemoved.addListener((tabId) => {
-  popupChildTabs.delete(tabId);
+  chrome.storage.session.remove(`arcRecovery:${tabId}`).catch(() => {});
   broadcastTabsUpdated();
 });
 chrome.tabGroups?.onRemoved?.addListener(async (group) => {
@@ -765,15 +642,45 @@ chrome.tabGroups?.onRemoved?.addListener(async (group) => {
     // A group can disappear while its cleanup is being persisted.
   }
 });
+chrome.tabGroups?.onUpdated?.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onActivated.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onMoved.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (popupChildTabs.has(tabId) && (changeInfo.url || changeInfo.status === 'complete')) {
-    adoptPopupChildTab(tabId);
-  }
   if (changeInfo.title || changeInfo.status === 'complete' || changeInfo.pinned !== undefined || changeInfo.favIconUrl) {
     broadcastTabsUpdated();
   }
+});
+
+// Chrome's own network error pages cannot host the injected Arc interface.
+// Recover only common main-frame network failures in an active Arc window.
+const RECOVERABLE_NETWORK_ERRORS = new Set([
+  'net::ERR_NAME_NOT_RESOLVED', 'net::ERR_NAME_RESOLUTION_FAILED',
+  'net::ERR_INTERNET_DISCONNECTED', 'net::ERR_CONNECTION_TIMED_OUT',
+  'net::ERR_CONNECTION_REFUSED', 'net::ERR_CONNECTION_RESET',
+  'net::ERR_ADDRESS_UNREACHABLE'
+]);
+chrome.webNavigation.onErrorOccurred.addListener((details) => {
+  if (details.frameId !== 0 || !isInjectableUrl(details.url) || !RECOVERABLE_NETWORK_ERRORS.has(details.error)) return;
+  setTimeout(async () => {
+    try {
+      const [settings, tab, frame] = await Promise.all([
+        chrome.storage.sync.get({ enabled: false }),
+        chrome.tabs.get(details.tabId),
+        chrome.webNavigation.getFrame({ tabId: details.tabId, frameId: 0 })
+      ]);
+      if (!settings.enabled || !frame?.errorOccurred || frame.url !== details.url) return;
+      const win = await chrome.windows.get(tab.windowId);
+      if (win.state !== 'fullscreen') return;
+      const key = `arcRecovery:${details.tabId}`;
+      await chrome.storage.session.set({ [key]: { url: details.url, error: details.error } });
+      // Recheck after asynchronous work so a newer navigation is never replaced.
+      const current = await chrome.webNavigation.getFrame({ tabId: details.tabId, frameId: 0 });
+      if (!current?.errorOccurred || current.url !== details.url) return;
+      await chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL('newtab/recovery.html?recovery=1') });
+    } catch {
+      // The tab or window may have closed or navigated while the error was handled.
+    }
+  }, 350);
 });
 
 // Message router for content scripts, New Tab override, and popup UI
@@ -783,22 +690,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DIA_ACTIVATE_ARC') {
     (async () => {
       try {
-        await chrome.storage.sync.set({ enabled: true });
+        const win = await chrome.windows.getLastFocused();
+        if (win.type !== 'normal') throw new Error('Open a normal Chrome window to enter full screen.');
+        await chrome.storage.sync.set({ enabled: true, activationMode: 'fullscreen' });
+        await chrome.storage.session.set({ arcSetupWindowId: win.id });
+        if (win.state !== 'fullscreen') await chrome.windows.update(win.id, { state: 'fullscreen' });
+        await chrome.storage.session.set({ arcFullscreenWindowId: win.id });
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (activeTab) {
-          if (!activeTab.url || !isInjectableUrl(activeTab.url)) {
-            await chrome.tabs.update(activeTab.id, { url: 'https://www.google.com' });
-          } else {
+          if (isInjectableUrl(activeTab.url)) {
             await ensureTabInjected(activeTab.id, activeTab.url);
-          }
-          const activeWindow = await chrome.windows.get(activeTab.windowId);
-          if (activeWindow.type !== 'popup') {
-            await toggleFramelessWindow(activeTab);
           }
         }
         await broadcastTabsUpdated();
         sendResponse({ ok: true });
       } catch (err) {
+        await chrome.storage.session.remove(['arcFullscreenWindowId', 'arcSetupWindowId']);
+        await chrome.storage.sync.set({ enabled: false });
         sendResponse({ ok: false, error: String(err) });
       }
     })();
@@ -808,13 +716,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DIA_DEACTIVATE_ARC') {
     (async () => {
       try {
+        const session = await chrome.storage.session.get('arcFullscreenWindowId');
+        await chrome.storage.session.remove(['arcFullscreenWindowId', 'arcSetupWindowId']);
         await chrome.storage.sync.set({ enabled: false });
-        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (activeTab?.id) {
-          const activeWindow = await chrome.windows.get(activeTab.windowId);
-          if (activeWindow.type === 'popup') {
-            await toggleFramelessWindow(activeTab);
-          }
+        if (session.arcFullscreenWindowId != null) {
+          const win = await chrome.windows.get(session.arcFullscreenWindowId).catch(() => null);
+          if (win?.state === 'fullscreen') await chrome.windows.update(win.id, { state: 'normal' });
         }
         sendResponse({ ok: true });
       } catch (err) {
@@ -940,6 +847,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const result = await tidyTabsBySubject(sender.tab?.windowId || message.windowId);
       await broadcastTabsUpdated();
       sendResponse(result);
+    })();
+    return true;
+  }
+
+  if (message.type === 'DIA_RENAME_FOLDER') {
+    (async () => {
+      try {
+        const groupId = Number(message.groupId);
+        const title = typeof message.title === 'string' ? message.title.trim() : '';
+        if (!Number.isInteger(groupId) || groupId < 0 || !title || title.length > 100) throw new Error('Enter a folder name.');
+        await chrome.tabGroups.update(groupId, { title });
+        await broadcastTabsUpdated();
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) });
+      }
     })();
     return true;
   }
@@ -1084,6 +1007,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } catch (err) {
         sendResponse({ ok: false, error: String(err) });
       }
+    })();
+    return true;
+  }
+
+  if (message.type === 'DIA_LIST_DOWNLOADS') {
+    (async () => {
+      try {
+        const query = String(message.query || '').trim().slice(0, 200);
+        const items = await chrome.downloads.search({ limit: 200, orderBy: ['-startTime'], ...(query ? { query: query.split(/\s+/) } : {}) });
+        sendResponse({ ok: true, items: items.map(({ id, filename, state, danger, exists, startTime, bytesReceived, totalBytes, paused, error }) => ({ id, filename, state, danger, exists, startTime, bytesReceived, totalBytes, paused, error })) });
+      } catch (err) { sendResponse({ ok: false, error: String(err) }); }
+    })();
+    return true;
+  }
+
+  if (message.type === 'DIA_DOWNLOAD_ACTION') {
+    (async () => {
+      try {
+        const id = Number(message.id);
+        if (!Number.isInteger(id) || id < 0 || !['open', 'show'].includes(message.action)) throw new Error('Invalid download action');
+        // Call open immediately so Chrome can associate it with the user's click.
+        // Chrome itself enforces completion and download safety for open().
+        if (message.action === 'open') await chrome.downloads.open(id);
+        else {
+          const [item] = await chrome.downloads.search({ id });
+          if (!item || item.state !== 'complete' || item.exists === false || !['safe', 'accepted'].includes(item.danger)) throw new Error('This file is not available.');
+          await chrome.downloads.show(id);
+        }
+        sendResponse({ ok: true });
+      } catch (err) { sendResponse({ ok: false, error: String(err) }); }
     })();
     return true;
   }
