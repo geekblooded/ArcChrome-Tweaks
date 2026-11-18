@@ -1,135 +1,91 @@
-# Chrome Web Store submission draft
+# Chrome Web Store submission — Arcflow 1.2.1
 
-Status: Draft for developer review. Confirm final package behavior, screenshots, and all Dashboard privacy declarations before submission.
+Status: Draft for developer review. This draft is written for the source package in `arcflow-1.2.1.zip`. Review every claim against the uploaded archive and the live Dashboard before certifying.
 
 ## Store listing
 
 **Name**  
-ArcChrome Tweaks
+Arcflow
 
 **Short description**  
-Bring an Arc-inspired sidebar, command bar, tab organization, and workspace controls to Chrome.
+Bring Arc-inspired tabs, sidebar navigation, and workspace controls to Chrome.
 
 **Detailed description**  
-Moving from Arc to Chrome? ArcChrome Tweaks brings familiar browsing patterns to Chrome: a left-side tab sidebar, searchable downloads, command bar, searchable tabs, tab grouping, URL actions, page framing, and a custom new-tab workspace. Keyboard shortcuts help you move through these controls. Some features vary by platform and cannot run on Chrome-restricted pages.
+Arcflow brings Arc-inspired navigation to Google Chrome with a left-side tab sidebar, a focused command bar, searchable tabs, tab groups and nested folders, download controls, and optional page styling. Use keyboard shortcuts to search tabs, enter or copy URLs, organize tabs, and reach browser controls.
 
-The extension reads tab titles and URLs to display, search, navigate, and organize tabs. It reads download names and status locally to display and search downloads, and opens or reveals files only when requested. Its content scripts add the sidebar, command bar, and visual page styling on eligible websites. The reviewed source does not send browsing history, download records, or page contents to a developer-operated backend. Google’s favicon service receives a site URL or domain when an icon is requested. Preferences use Chrome Storage Sync and local storage. See the privacy policy for details.
+On a new installation, Arcflow stays off until you review its onboarding notice and choose to enable it. After activation, tab titles and URLs are processed on your device to show and organize tabs. A clicked link destination is read only when you use a supported link-opening gesture. Download records and installed extension details are read only when you open those panels. Arcflow does not send this information to a developer-operated service. Search text is sent to your selected provider only when you submit a search. Chrome may sync preferences and your workspace name when Chrome Sync is enabled. Arcflow does not read page text, images, forms, or page storage.
 
-Some pages managed by Chrome, such as Chrome Web Store pages and internal chrome:// pages, do not allow content-script features. Tab organization and shortcut behavior may vary by platform.
+Arcflow does not replace Chrome's New Tab page. Some browser-controlled pages, including Chrome internal pages and Chrome Web Store pages, restrict extension features.
 
-**Category suggestion**  
+**Category**
 Productivity
 
 **Language**  
 English
 
-**Support contact**  
+**Support email**
 gaurav.sathe16@gmail.com
 
 **Homepage / support URL**  
-https://geekblooded.github.io/ArcChrome-Tweaks/
+https://geekblooded.github.io/Arcflow/
 
 **Privacy policy URL**
-https://geekblooded.github.io/ArcChrome-Tweaks/privacy.html
+https://geekblooded.github.io/Arcflow/privacy.html
 
-## Privacy policy draft
-
-Public policy: https://geekblooded.github.io/ArcChrome-Tweaks/privacy.html
-
-### ArcChrome Tweaks Privacy Policy
-
-ArcChrome Tweaks provides browser interface, tab navigation, and tab organization features in Google Chrome.
-
-**Information accessed and processed**
-
-- **Browsing activity (tab URLs and titles):** The extension accesses open-tab URLs and titles to display and search tabs, switch between tabs, organize tabs into groups, and provide navigation controls. The current page URL and title may be used when you invoke copy or navigation features.
-- **Extension inventory:** The extension uses Chrome's extension-management API to display installed extension information and icons in its interface.
-- **Downloads:** The extension reads download names, dates, status and progress to display and search them locally, and can open a completed download or reveal it in the file manager at the user's request. Download records are not sent to the developer.
-- **Preferences:** The extension stores your feature and appearance settings using Chrome Storage Sync and Chrome local storage. Some icon data is cached locally.
-
-**How information is used and shared**
-
-Tab and page information is processed by the extension to provide its user-facing features. The reviewed source contains no transmission of browsing data to a developer-operated server. To display favicons, the extension makes requests to Google's favicon service using the relevant site URL or domain; Google receives those request values and handles them under its own policies. Chrome Sync may store synchronized settings according to your Google account settings and Google's policies.
-
-**Data sale and advertising**
-
-The developer does not sell browsing data, use it for advertising, or transfer it to data brokers, based on the current implementation review.
-
-**Data retention and deletion**
-
-Settings and cached icon data remain in Chrome storage until removed by the extension, cleared in Chrome, or removed when the extension is uninstalled. Chrome Sync data is managed through your Google account and Chrome settings.
-
-**Security**
-
-The extension relies on Chrome's extension storage and permission model. Keep Chrome up to date and install the extension only from the official Chrome Web Store listing.
-
-**Changes and contact**
-
-The developer may update this policy when the extension's behavior changes. For privacy questions, contact: **gaurav.sathe16@gmail.com**.
-
-**Effective date:** [date of publication]
-
-## Data use disclosure worksheet (developer dashboard)
-
-Use this as a starting point; answer the dashboard's current questions directly and consistently with the final build.
-
-- **Personally identifiable information:** No collection identified in the source review.
-- **Health, financial, authentication, personal communications, location, web history, or user activity:** The extension accesses browsing activity in the form of tab URLs and titles. These are processed for the tab and navigation features described above. They are not sent to a developer-operated backend in the reviewed code.
-- **Website content:** The content scripts run on web pages. Page title and URL are used for in-page controls and copy actions. The reviewed code does not transmit page contents to a developer-operated backend.
-- **Data transfers:** Requests to Google's favicon service may include site URLs/domains. Chrome Sync handles synchronized preferences.
-- **Sale / advertising / creditworthiness or lending:** No, based on the reviewed implementation.
-- **Limited use certification:** The developer must confirm the final data handling complies with Chrome Web Store User Data policy before certifying.
-
-## Dashboard answer draft
+## Dashboard answers to review
 
 ### Single purpose
 
-ArcChrome Tweaks adapts Chrome’s navigation interface for people familiar with Arc by adding a left-side tab sidebar, command bar, searchable tab switcher, tab organization, and a configurable new-tab workspace.
+Arcflow provides Arc-inspired tab navigation and browser workspace controls in Google Chrome, including a sidebar, command bar, tab organization, download controls, and optional page styling.
+
+### Remote code
+
+**No.** The package does not load or execute remotely hosted JavaScript or WebAssembly. User-entered search terms are sent to the selected search provider only when the user submits a search.
+
+### Data types
+
+- **Web history:** Select. Arcflow reads tab titles and URLs locally to provide sidebar, search, switching, navigation, and organization features.
+- **Website content:** Select, then explain narrowly. Arcflow reads the current page title and URL and, only when a supported link-opening gesture is used, the clicked hyperlink destination. It does not read page body text, images, media, form entries, or page storage.
+- **User activity:** Select, then explain narrowly. Click, key, and pointer events are handled transiently to operate controls and reveal the sidebar. Arcflow does not record or retain event logs or browsing behavior analytics.
+- **Search queries:** Select if the Dashboard offers this category. Search text entered in Arcflow is sent to the provider selected in settings only when you submit a search; it is not saved as a search history.
+- **Files and documents / downloads:** Select the corresponding category if the Dashboard offers one. Arcflow reads download filenames and metadata (a filename may include its local path) when you open the downloads panel, but it does not read downloaded file contents.
+- **Personally identifiable information:** Select and disclose that titles, URLs, and download filenames/paths may incidentally contain identifying details. Arcflow does not request or extract identity fields as a separate feature.
+- **Other data:** Download metadata, installed extension details, and preferences are accessed for their corresponding interface features. Download data is read when that panel is opened. Preferences and workspace name may sync through Chrome Sync. None of this is sent to an Arcflow-operated service.
+- **Do not select:** Health, financial/payment, authentication, personal communications, and location. Arcflow does not access these as separate data types or features.
+
+These are conservative data-type recommendations based on the current package behavior. In the Dashboard, describe local processing and user-facing purposes for every selected type; do not equate local access with transmission to the developer.
+
+### Limited use and sharing
+
+The extension uses Chrome API information only to provide its disclosed navigation, tab management, downloads, extension information, and styling features. The developer does not sell user data, use it for personalized or retargeted advertising, transfer it to data brokers, or provide it to a developer-operated service. Search query transmission occurs only when the user submits a search to the chosen provider. Chrome Sync may transmit preferences when enabled by the user.
 
 ### Permission justifications
 
-- **`storage`:** Save user-selected interface preferences and cache icons used by the extension UI.
-- **`tabs`:** Read tab titles and URLs to display, search, switch, group, pin, move, create, update, and close tabs as requested through extension controls.
-- **`tabGroups`:** Create and manage tab groups for the tab organization features.
-- **`sessions`:** Restore recently closed tabs or windows when the user invokes restore.
-- **`webNavigation`:** Detect eligible navigation failures for the recovery screen.
-- **`downloads`:** Display and search download history and reveal a selected completed file.
-- **`downloads.open`:** Open a selected completed download in response to a user action.
-- **`scripting`:** Add or refresh the extension's sidebar, command bar, and page styling on eligible open tabs when needed.
-- **`management`:** Display the user's installed extensions and related icons in the extension interface.
-- **Host access `<all_urls>`:** Run the sidebar, command bar, keyboard interactions, and optional page framing on eligible websites. Chrome internal pages and other restricted pages are excluded by browser limitations.
+- **`storage`:** Save appearance and feature preferences and local workspace state.
+- **`tabs`:** Read tab titles and URLs for the sidebar and command bar and create, switch, move, group, pin, update, or close tabs in response to user actions.
+- **`tabGroups`:** Create and manage Chrome tab groups and nested folder organization.
+- **`sessions`:** Restore a recently closed tab or window when the user requests it.
+- **`webNavigation`:** Detect eligible navigation errors and show the extension’s recovery interface.
+- **`downloads`:** Display and search Chrome download records and reveal a selected file.
+- **`downloads.open`:** Open a selected completed download after the user chooses that action.
+- **`scripting`:** Add or refresh Arcflow's sidebar, command bar, and optional styling on eligible web pages.
+- **`management`:** Display installed extension details and icons in Arcflow's interface.
+- **`<all_urls>` host access:** Provide the in-page interface and optional styling across sites. Chrome internal and other browser-restricted pages remain inaccessible.
 
-### User data declarations (review against dashboard's actual choices)
+## Privacy policy URL content
 
-- Browsing activity: **tab URLs and titles**, used for visible tab display, search, navigation, and organization features.
-- Website content: **page title and current URL** used by visible controls and URL copy/navigation actions; content scripts apply UI and styling. The reviewed source does not collect or transmit page text or form content.
-- Extension inventory: installed extension names/details/icons are read for the extension UI.
-- User settings: saved to Chrome Sync and local extension storage.
-- Third-party transmission: site URL/domain may be sent to Google's favicon service to return a favicon; extension-icon requests may go to the relevant extension homepage. No developer-operated analytics or browsing-data backend was found in the reviewed source.
-- Sale, advertising, creditworthiness, or data brokerage: **No**, based on current implementation review.
-- Certification: only check the Limited Use certification after the developer has verified the uploaded build, privacy policy, and dashboard answers.
+The public policy is maintained in `docs/privacy.html`. Its effective date is November 18, 2026. Before submission, publish the latest version at the URL above and confirm that it matches the uploaded package.
 
-These are drafting aids, not preselected dashboard answers. The account owner must check every dashboard field against the exact build and current Chrome Web Store questions.
+## Assets and release file
 
-## Permissions rationale
+- Upload: `store-submission/arcflow-1.2.1.zip`
+- Store icon: use `icons/icon-128.png` (128 × 128 PNG)
+- Screenshots: add current screenshots from the final extension build in the Dashboard; do not use the website's illustrative browser mockup as if it were a functional extension screenshot.
 
-- `storage`: persist preferences and local icon cache.
-- `tabs`: display/search/switch/rearrange tabs and create or update tabs/windows.
-- `tabGroups`: create and manage groups for organization features.
-- `sessions`: restore recently closed tabs/windows.
-- `webNavigation`: detect eligible navigation failures for the recovery screen.
-- `downloads`: show and search download records and reveal files on request.
-- `downloads.open`: open a completed download on request.
-- `scripting`: inject extension UI into eligible tabs when enabled or needed.
-- `management`: display installed extensions and their icons in extension UI.
-- `<all_urls>` host access: run the in-page sidebar, command bar, and viewport styling on eligible sites. Chrome-restricted pages remain unavailable.
+## Before submitting
 
-Review whether all permissions and `<all_urls>` access remain necessary in the release build; reducing access can improve user trust and store review.
-
-## Submission notes
-
-- Upload `arcchrome-tweaks-1.1.0.zip` from this folder.
-- Provide final support contact, homepage/support URL, and public privacy policy URL.
-- Add store screenshots and a promotional tile using the final listing assets.
-- Complete the developer dashboard's current privacy, remote-code, and permission declarations against the exact uploaded ZIP.
-- The current manifest is version `1.1.0`; Chrome Web Store updates require a version higher than any version already uploaded to the listing.
+1. Confirm the ZIP is the exact Arcflow 1.2.1 package you intend to upload.
+2. Set the listing name, description, support email, homepage URL, and privacy URL above.
+3. Complete each Dashboard data-use field and permission declaration to match the package and policy. Check “No” for remotely hosted executable code. The Dashboard's public disclosures are your certification.
+4. Upload real screenshots of the extension's current UI.
+5. Review the live policy URL, then submit the item for review.
