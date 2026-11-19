@@ -1,5 +1,5 @@
 /**
- * ArcChrome-Tweaks — Unified Viewport Bezel, Corner Mask & Window Geometry Controller
+ * Arcflow — Unified Viewport Bezel, Corner Mask & Window Geometry Controller
  *
  * Ensures the 4-sided viewport bezel (`--dia-frame-color`) and the left vertical sidebar
  * always share the exact same unified theme surface color (Cra / Arc continuous canvas).

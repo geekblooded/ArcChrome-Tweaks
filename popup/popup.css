@@ -1,6 +1,6 @@
 /* ============================================================================
- * ArcChrome-Tweaks — Two-Column Split Settings UI (Light & Dark Mode)
- * Uses "Google Sans" typography & Iconly duotone icons (no fake macOS buttons)
+ * Arcflow — Two-Column Split Settings UI (Light & Dark Mode)
+ * Uses system typography & Iconly duotone icons (no fake macOS buttons)
  * ========================================================================== */
 
 [hidden] {
@@ -10,7 +10,7 @@
 :root,
 [data-ui-theme="light"] {
   color-scheme: light;
-  --font-google: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-google: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --rail-bg: #ffffff;
   --pane-bg: #ffffff;
   --card-bg: #f4f5f7;
@@ -872,13 +872,14 @@ input[type="range"]::-webkit-slider-thumb {
 .dia-welcome-shell {
   padding: 0;
   display: block;
-  overflow-y: auto;
+  overflow: hidden;
   background: #fff;
   color: #171717;
 }
 .dia-welcome-card {
   max-width: none;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   gap: 0;
   background: #fff;
@@ -954,26 +955,74 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Compact onboarding and activation button */
 body { border-radius: 24px; }
-.dia-welcome-shell { height: 490px; overflow: hidden; border-radius: 24px; }
+/* The disclosure and consent row need room above the fixed activation CTA. */
+body.dia-onboarding { height: 600px; max-height: 600px; }
+.dia-welcome-shell { height: 560px; max-height: 600px; overflow: hidden; border-radius: 24px; }
 .dia-welcome-hero { height: 185px; flex-basis: 185px; }
 .dia-welcome-logo { width: 104px; height: 104px; margin-top: -64px; }
-.dia-welcome-content { flex: 1; padding: 8px 24px 24px; gap: 12px; }
+.dia-welcome-content { flex: 1; min-height: 0; padding: 8px 24px 18px; gap: 10px; }
+.dia-welcome-intro { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .dia-welcome-title { font-size: 44px; }
 .dia-welcome-subtitle {
-  font-family: 'Google Sans', 'Google Sans Flex', 'Google Sans Text', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 15px;
   line-height: 1.4;
 }
+.dia-privacy-notice {
+  width: 100%;
+  max-width: 490px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #45484d;
+  font: 16px/1.38 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-align: center;
+}
+.dia-privacy-notice strong { color: #202124; font-weight: 650; }
+.dia-privacy-consent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  color: #303238;
+  font: 12px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+}
+.dia-privacy-consent input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  border: 2px solid #777b82;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+.dia-privacy-consent input:checked { border-color: #0878f9; background: #0878f9; }
+.dia-privacy-consent input:checked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: center / 12px 12px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l2.6 2.6L10 3.2' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.dia-privacy-consent input:focus-visible { outline: 3px solid rgba(8, 120, 249, .28); outline-offset: 2px; }
+.dia-big-power-btn:disabled:not(.is-activating) { opacity: .45; cursor: not-allowed; }
 .dia-big-power-btn {
   position: relative;
   width: 240px;
   min-height: 48px;
   flex: 0 0 48px;
-  margin-top: auto;
+  margin-top: 4px;
+  align-self: center;
   padding: 0 18px 0 58px;
   border-radius: 999px;
   overflow: hidden;
-  font-family: 'Google Sans', 'Google Sans Flex', -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 600;
   font-size: 13px;
   transition: background-color 150ms ease;
@@ -1044,3 +1093,12 @@ body, .dia-welcome-shell { border-radius: 0; }
 .dia-detail-view > .dia-group-label:first-child { display: none; }
 .dia-sidebar-rail { position: relative; border-right: 0; }
 .dia-sidebar-rail::after { content: ''; position: absolute; right: 0; top: 54px; bottom: 16px; width: 1px; background: var(--border-subtle); pointer-events: none; }
+body.dia-embedded { width: 100%; height: 100vh; }
+
+/* Let the welcome screen end 24px below the activation button. */
+body.dia-onboarding { height: auto; max-height: 600px; }
+body.dia-onboarding .dia-welcome-shell { height: auto; max-height: 600px; }
+body.dia-onboarding .dia-welcome-card { height: auto; }
+body.dia-onboarding .dia-welcome-content { flex: none; padding-bottom: 24px; gap: 24px; }
+.dia-welcome-intro { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+body.dia-onboarding .dia-big-power-btn { margin-top: 0; }

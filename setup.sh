@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ArcChrome-Tweaks — Non-Invasive macOS Setup Helper (`setup.sh` v1.1.0)
+# Arcflow — Non-Invasive macOS Setup Helper (`setup.sh` v1.0.0)
 #
 # Inspired by JaceThings/DiaTweaks, adapted for corporate IT / MDM environments:
 # - NEVER modifies, patches, or re-signs `/Applications/Google Chrome.app`
@@ -8,7 +8,7 @@
 #   preferences (including `NSUserKeyEquivalents` for toolbar hiding)
 #
 # Usage:
-#   ./setup.sh            # Apply recommended Dia-style Chrome user defaults
+#   ./setup.sh            # Apply recommended Arc-inspired Chrome user defaults
 #   ./setup.sh --status   # Show current status & verify Chrome code signature
 #   ./setup.sh --revert   # Revert user defaults back to stock Chrome
 # ==============================================================================
@@ -27,7 +27,7 @@ RESET="\033[0m"
 
 print_banner() {
   echo -e "${BOLD}${CYAN}╭──────────────────────────────────────────────────────────────╮${RESET}"
-  echo -e "${BOLD}${CYAN}│  ArcChrome-Tweaks v1.1 — Official Google Chrome Setup (macOS) │${RESET}"
+  echo -e "${BOLD}${CYAN}│  Arcflow v1.0.0 — Official Google Chrome Setup (macOS) │${RESET}"
   echo -e "${BOLD}${CYAN}╰──────────────────────────────────────────────────────────────╯${RESET}"
 }
 
@@ -77,17 +77,17 @@ apply_defaults() {
   echo -e "  ${GREEN}✓${RESET} Tuned full-screen / window transition speed (0.08s)"
 
   echo ""
-  echo -e "${BOLD}2. Load the ArcChrome-Tweaks v1.1 Extension:${RESET}"
+  echo -e "${BOLD}2. Load the Arcflow v1.0.0 Extension:${RESET}"
   echo -e "  a) Open ${CYAN}chrome://extensions${RESET} in Google Chrome"
   echo -e "  b) Enable ${BOLD}Developer mode${RESET} (top-right toggle)"
   echo -e "  c) Click ${BOLD}Load unpacked${RESET} and select:"
   echo -e "     ${GREEN}$(cd "$(dirname "$0")" && pwd)${RESET}"
-  echo -e "     (Or click the ${BOLD}↻ Reload${RESET} icon on the ArcChrome-Tweaks card if already loaded)"
+  echo -e "     (Or click the ${BOLD}↻ Reload${RESET} icon on the Arcflow card if already loaded)"
   echo ""
   echo -e "${BOLD}3. Two Ways to Hide the Top URL Bar in Official Chrome:${RESET}"
-  echo -e "  • ${BOLD}Option A — Windowed Mode (Frameless Dia Window):${RESET}"
+  echo -e "  • ${BOLD}Option A — Windowed Mode (Frameless browser window):${RESET}"
   echo -e "    Press ${CYAN}⌘⇧D${RESET} (or click ${BOLD}Frameless${RESET} in the popup) to pop any tab into a"
-  echo -e "    toolbar-less Dia window with our ${BOLD}In-Page Hover Vertical Sidebar${RESET} (hover left edge or press ${CYAN}⌘S${RESET})!"
+  echo -e "    toolbar-less browser window with our ${BOLD}In-Page Hover Vertical Sidebar${RESET} (hover left edge or press ${CYAN}⌘S${RESET})!"
   echo -e "  • ${BOLD}Option B — Full-Screen Mode (Native Auto-Hide):${RESET}"
   echo -e "    Press ${CYAN}⌃⌘F${RESET} for Full Screen and press ${CYAN}⇧⌘F${RESET} (${BOLD}View → Always Show Toolbar in Full Screen${RESET} Off)."
   echo ""
@@ -95,7 +95,7 @@ apply_defaults() {
 
 revert_defaults() {
   print_banner
-  echo -e "${BOLD}Reverting ArcChrome-Tweaks user-space defaults...${RESET}"
+  echo -e "${BOLD}Reverting Arcflow user-space defaults...${RESET}"
   defaults delete "$CHROME_DOMAIN" AppleEnableSwipeNavigateWithScrolls 2>/dev/null || true
   defaults delete "$CHROME_DOMAIN" NSUserKeyEquivalents 2>/dev/null || true
   defaults delete "$CHROME_DOMAIN" NSWindowResizeTime 2>/dev/null || true

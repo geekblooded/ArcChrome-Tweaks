@@ -1,16 +1,16 @@
 /**
- * ArcChrome-Tweaks — Floating Dia Command Bar, Recreated Hover Vertical Sidebar,
- * Top-Edge Hover URL Pill, Copy URL Toast & Dia Keyboard Shortcut Engine (v1.1.0+)
+ * Arcflow — Floating Arcflow Command Bar, Recreated Hover Vertical Sidebar,
+ * Top-Edge Hover URL Pill, Copy URL Toast & Arcflow Keyboard Shortcut Engine
  *
  * Upgraded with:
- * - "Google Sans" typography across all UI surfaces
+ * - System typography across all UI surfaces
  * - Iconly 2px rounded stroke & duotone vector iconography
  * - Full Light & Dark UI mode support (Auto / Light / Dark)
  * - Hot-replacement support so reloading the extension updates open tabs cleanly
  */
 
 (() => {
-  const SCRIPT_VERSION = '1.3.0-real-tabs-and-sidebar-dnd';
+  const SCRIPT_VERSION = chrome.runtime.getManifest().version;
   if (window.__workspaceCommandVersion === SCRIPT_VERSION) return;
 
   if (typeof window.__workspaceCommandCleanup === 'function') {
@@ -138,6 +138,8 @@
   let savedQueryText = '';
   let lastCloseWasEscape = false;
   let sidebarHideTimer = null;
+  let settingsPanelOpen = false;
+  let cleanupSettingsPanel = () => {};
   let topBarHideTimer = null;
   let toastTimer = null;
   let cleanupDownloadsView = () => {};
@@ -149,6 +151,7 @@
   let inputEl = null;
   let resultsEl = null;
   let modeBadgeEl = null;
+  let footerEl = null;
 
   let leftHoverSensorEl = null;
   let sidebarEl = null;
@@ -289,11 +292,9 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap');
-
       :host {
         all: initial;
-        --font-google: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+        --font-google: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
 
         /* Dark Mode Tokens (Default) */
         --surface-bg: rgba(20, 21, 28, 0.92);
@@ -439,6 +440,28 @@
 
       .dia-modal.is-compact .dia-input-row {
         padding: 10px 14px;
+      }
+
+      .dia-modal.is-switcher {
+        width: min(480px, calc(100vw - 32px));
+      }
+
+      .dia-modal.is-switcher .dia-input-row {
+        display: none;
+      }
+
+      .dia-modal.is-switcher .dia-results {
+        max-height: min(420px, calc(100vh - 110px));
+        padding: 10px;
+      }
+
+      .dia-switcher-heading {
+        padding: 4px 12px 8px;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: .04em;
+        text-transform: uppercase;
       }
 
       .dia-search-icon {
@@ -662,6 +685,7 @@
         z-index: 2147483646;
         display: flex;
         flex-direction: column;
+        min-height: 0;
         color: var(--text-primary);
         transform: translateX(-266px);
         opacity: 0;
@@ -1075,14 +1099,30 @@
 
       /* Open Tabs List */
       .dia-sb-tabs {
-        flex: 1;
-        overflow-y: auto;
+        flex: 0 0 auto;
+        overflow: visible;
         padding: 4px 8px 8px;
         display: flex;
         flex-direction: column;
         gap: 2px;
         scrollbar-width: thin;
         scrollbar-color: var(--item-border) transparent;
+      }
+
+      .dia-sb-scroll-area {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: var(--item-border) transparent;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dia-sidebar.is-downloads .dia-sb-scroll-area {
+        display: none;
       }
 
       .dia-sb-folder {
@@ -1229,10 +1269,10 @@
       }
 
       .dia-sb-tab-close {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         padding: 0;
-        flex: 0 0 20px;
+        flex: 0 0 24px;
         border-radius: 0;
         border: none;
         background: transparent;
@@ -1246,8 +1286,8 @@
       }
 
       .dia-sb-tab-close svg {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         flex-shrink: 0;
       }
 
@@ -1533,7 +1573,7 @@
     resultsEl = document.createElement('div');
     resultsEl.className = 'dia-results';
 
-    const footerEl = document.createElement('div');
+    footerEl = document.createElement('div');
     footerEl.className = 'dia-footer';
     footerEl.innerHTML = `
       <span><kbd>↑</kbd><kbd>↓</kbd> Navigate &nbsp; <kbd>↵</kbd> Open &nbsp; <kbd>⌘↵</kbd> New Tab &nbsp; <kbd>⌘W</kbd> Close Tab</span>
@@ -1545,7 +1585,7 @@
     modalEl.appendChild(footerEl);
     backdropEl.appendChild(modalEl);
 
-    // 2. Recreated Hover / Pinned Vertical Sidebar (DPSidebar with Google Sans + Iconly)
+    // 2. Recreated Hover / Pinned Vertical Sidebar with system typography and Iconly
     sidebarEl = document.createElement('aside');
     sidebarEl.className = 'dia-sidebar';
     sidebarEl.setAttribute('aria-label', 'Vertical Tab Sidebar');
@@ -1726,7 +1766,7 @@
     downloadHost.style.cssText = 'display:none; flex:1; min-height:0; overflow:hidden;';
     const downloadsShadow = downloadHost.attachShadow({ mode: 'closed' });
     downloadsShadow.innerHTML = `<style>
-      :host{font-family:-apple-system,BlinkMacSystemFont,"Google Sans",sans-serif;color:var(--text-primary,#24252b)}
+      :host{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text-primary,#24252b)}
       *{box-sizing:border-box} .panel{height:100%;display:flex;flex-direction:column;padding:10px 10px 4px;gap:10px}
       .heading{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650}
       button{font:inherit;cursor:pointer;color:inherit} .back{border:0;background:transparent;font-size:19px;padding:2px 5px;border-radius:6px}
@@ -1854,17 +1894,99 @@
       openPalette('command');
     });
 
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'dia-sb-icon-btn';
+    settingsBtn.title = 'Arcflow settings';
+    settingsBtn.setAttribute('aria-label', 'Open Arcflow settings');
+    settingsBtn.setAttribute('aria-expanded', 'false');
+    settingsBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12.88v-1.76c0-1.04.85-1.9 1.9-1.9 1.81 0 2.55-1.28 1.64-2.85-.52-.9-.21-2.07.7-2.59l1.73-.99c.79-.47 1.81-.19 2.28.6l.11.19c.9 1.57 2.38 1.57 3.29 0l.11-.19c.47-.79 1.49-1.07 2.28-.6l1.73.99c.91.52 1.22 1.69.7 2.59-.91 1.57-.17 2.85 1.64 2.85 1.05 0 1.9.85 1.9 1.9v1.76c0 1.04-.85 1.9-1.9 1.9-1.81 0-2.55 1.28-1.64 2.85.52.9.21 2.07-.7 2.59l-1.73.99c-.79.47-1.81.19-2.28-.6l-.11-.19c-.9-1.57-2.38-1.57-3.29 0l-.11.19c-.47.79-1.49 1.07-2.28.6l-1.73-.99c-.91-.52-1.22-1.69-.7-2.59.91-1.57.17-2.85-1.64-2.85-1.05 0-1.9-.86-1.9-1.9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const settingsGroup = document.createElement('div');
+    settingsGroup.className = 'dia-sb-nav-group';
+    settingsGroup.append(quickAddBtn, settingsBtn);
+    const panelHost = document.createElement('div');
+    panelHost.style.cssText = 'position:fixed;z-index:2147483647;display:none;';
+    const panelRoot = panelHost.attachShadow({ mode: 'closed' });
+    panelRoot.innerHTML = '<style>:host{display:block}iframe{display:block;width:100%;height:100%;border:0;background:white;box-shadow:0 12px 38px rgba(0,0,0,.22);border-radius:12px}</style>';
+    let settingsFrame = null;
+    let panelGeneration = 0;
+    let readyTimer = null;
+    const closePanel = () => {
+      panelGeneration++;
+      settingsPanelOpen = false;
+      clearTimeout(readyTimer);
+      settingsFrame?.remove(); settingsFrame = null;
+      panelHost.style.display = 'none';
+      settingsBtn.classList.remove('is-active');
+      settingsBtn.setAttribute('aria-expanded', 'false');
+      isSidebarHoverOpen = sidebarEl.matches(':hover');
+      updateSidebarVisibility();
+    };
+    const positionPanel = () => {
+      const rect = settingsBtn.getBoundingClientRect();
+      const width = Math.max(1, Math.min(560, window.innerWidth - 16));
+      const height = Math.max(1, Math.min(490, window.innerHeight - 16));
+      const left = Math.max(8, Math.min(rect.right + 8, window.innerWidth - width - 8));
+      const top = Math.max(8, Math.min(rect.bottom - height, window.innerHeight - height - 8));
+      Object.assign(panelHost.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+    };
+    settingsBtn.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      if (settingsPanelOpen) { closePanel(); return; }
+      const generation = ++panelGeneration;
+      settingsPanelOpen = true;
+      if (sidebarHideTimer) clearTimeout(sidebarHideTimer);
+      isSidebarHoverOpen = true; updateSidebarVisibility();
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      const token = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+      try {
+        const result = await chrome.runtime.sendMessage({ type: 'ARC_SETTINGS_TOKEN', token });
+        if (generation !== panelGeneration) return;
+        if (!result?.ok) throw new Error('Could not authorize settings');
+        positionPanel(); panelHost.style.display = 'block';
+        settingsFrame = document.createElement('iframe');
+        settingsFrame.title = 'Arcflow settings';
+        settingsFrame.src = chrome.runtime.getURL(`popup/embedded.html?token=${token}`);
+        panelRoot.appendChild(settingsFrame);
+        settingsBtn.classList.add('is-active'); settingsBtn.setAttribute('aria-expanded', 'true');
+        readyTimer = setTimeout(async () => {
+          if (generation !== panelGeneration) return;
+          closePanel();
+          try {
+            const fallback = await chrome.runtime.sendMessage({ type: 'DIA_OPEN_EXTENSION', isSelf: true });
+            if (!fallback?.ok) showToast('Open Arcflow from the Chrome toolbar.', 'info');
+          } catch { showToast('Open Arcflow from the Chrome toolbar.', 'info'); }
+        }, 4000);
+      } catch { closePanel(); showToast('Could not open settings.', 'error'); }
+    });
+    const onSettingsMessage = (event) => {
+      if (!settingsFrame || event.source !== settingsFrame.contentWindow || event.origin !== `chrome-extension://${chrome.runtime.id}`) return;
+      if (event.data?.type === 'ARC_SETTINGS_READY') clearTimeout(readyTimer);
+      if (event.data?.type === 'ARC_SETTINGS_CLOSE') closePanel();
+    };
+    const onSettingsOutside = (event) => { if (settingsPanelOpen && !event.composedPath().includes(hostEl)) closePanel(); };
+    const onSettingsResize = () => { if (settingsPanelOpen) positionPanel(); };
+    window.addEventListener('message', onSettingsMessage);
+    window.addEventListener('resize', onSettingsResize);
+    document.addEventListener('pointerdown', onSettingsOutside, true);
+    cleanupSettingsPanel = () => { closePanel(); window.removeEventListener('message', onSettingsMessage); window.removeEventListener('resize', onSettingsResize); document.removeEventListener('pointerdown', onSettingsOutside, true); };
+
     sbFooter.appendChild(sbFooterLeft);
-    sbFooter.appendChild(quickAddBtn);
+    sbFooter.appendChild(settingsGroup);
+    shadow.appendChild(panelHost);
+
+    const sbScrollArea = document.createElement('div');
+    sbScrollArea.className = 'dia-sb-scroll-area';
+    sbScrollArea.setAttribute('aria-label', 'Tabs and folders');
+    sbScrollArea.appendChild(sidebarPinnedGridEl);
+    sbScrollArea.appendChild(sbTools);
+    sbScrollArea.appendChild(sidebarFoldersListEl);
+    sbScrollArea.appendChild(sbDivider);
+    sbScrollArea.appendChild(sbNewTabRow);
+    sbScrollArea.appendChild(sidebarTabsListEl);
 
     sidebarEl.appendChild(sbHeader);
     sidebarEl.appendChild(sbUrlBar);
-    sidebarEl.appendChild(sidebarPinnedGridEl);
-    sidebarEl.appendChild(sbTools);
-    sidebarEl.appendChild(sidebarFoldersListEl);
-    sidebarEl.appendChild(sbDivider);
-    sidebarEl.appendChild(sbNewTabRow);
-    sidebarEl.appendChild(sidebarTabsListEl);
+    sidebarEl.appendChild(sbScrollArea);
     sidebarEl.appendChild(downloadHost);
     sidebarEl.appendChild(sbFooter);
 
@@ -1877,6 +1999,7 @@
     sidebarEl.addEventListener('mouseleave', () => {
       if (sidebarHideTimer) clearTimeout(sidebarHideTimer);
       sidebarHideTimer = setTimeout(() => {
+        if (settingsPanelOpen) return;
         isSidebarHoverOpen = false;
         updateSidebarVisibility();
       }, 220);
@@ -2207,7 +2330,7 @@
           const btn = document.createElement('button');
           btn.className = 'dia-top-ext-btn';
           btn.title = ext.isSelf
-            ? 'Open ArcChrome-Tweaks popup'
+            ? 'Open Arcflow settings'
             : `${ext.fullName || ext.name} — open from Chrome’s toolbar`;
           const img = document.createElement('img');
           img.src = ext.iconDataUrl;
@@ -2791,6 +2914,34 @@
 
     const actions = getDiaCommandItems();
 
+    if (currentPaletteMode === 'switcher') {
+      modeBadgeEl.textContent = 'Recent Tabs';
+      const activeTab = openTabs.find((tab) => tab.id === activeTabId || tab.active);
+      const currentWindowId = activeTab?.windowId;
+      const recentTabs = openTabs
+        .filter((tab) => tab.id !== activeTabId && (currentWindowId == null || tab.windowId === currentWindowId))
+        .sort((a, b) => {
+          const aRank = Number.isFinite(a.recentIndex) && a.recentIndex >= 0 ? a.recentIndex : Number.MAX_SAFE_INTEGER;
+          const bRank = Number.isFinite(b.recentIndex) && b.recentIndex >= 0 ? b.recentIndex : Number.MAX_SAFE_INTEGER;
+          return aRank - bRank || a.index - b.index;
+        });
+      const heading = document.createElement('div');
+      heading.className = 'dia-switcher-heading';
+      heading.textContent = 'Recently used';
+      resultsEl.appendChild(heading);
+      filteredItems = recentTabs.slice(0, 12).map((tab) => ({
+        kind: 'tab',
+        tabId: tab.id,
+        windowId: tab.windowId,
+        title: tab.title || 'Untitled Tab',
+        subtitle: tab.url || '',
+        favIconUrl: tab.favIconUrl || '',
+        groupTitle: tab.groupTitle,
+        groupColor: tab.groupColor,
+        badge: 'Switch Tab'
+      }));
+    } else {
+
     if (rawQuery.trim().length > 0) {
       if (looksLikeUrl(rawQuery)) {
         const dest = normalizeDestination(rawQuery);
@@ -2855,6 +3006,7 @@
 
     if (!query) {
       filteredItems.push(...actions);
+    }
     }
 
     if (selectedIndex >= filteredItems.length) {
@@ -2996,6 +3148,13 @@
     isOpen = true;
     currentPaletteMode = mode;
     selectedIndex = 0;
+    modalEl.classList.toggle('is-switcher', mode === 'switcher');
+    modalEl.setAttribute('aria-label', mode === 'switcher' ? 'Recently used tabs' : 'Command Bar');
+    if (footerEl) {
+      footerEl.innerHTML = mode === 'switcher'
+        ? '<span><kbd>Ctrl</kbd>+<kbd>Tab</kbd> Cycle tabs</span><span>Release <kbd>Ctrl</kbd> to switch · <kbd>Esc</kbd> Cancel</span>'
+        : '<span><kbd>↑</kbd><kbd>↓</kbd> Navigate &nbsp; <kbd>↵</kbd> Open &nbsp; <kbd>⌘↵</kbd> New Tab &nbsp; <kbd>⌘W</kbd> Close Tab</span><span><kbd>⌘⇧C</kbd> Copy URL &nbsp; <kbd>Esc</kbd> Dismiss</span>';
+    }
 
     if (mode === 'url') {
       inputEl.value = window.location.href;
@@ -3012,12 +3171,12 @@
     await refreshSidebarTabs();
     renderResults();
 
-    requestAnimationFrame(() => {
-      inputEl.focus();
-      if (inputEl.value) {
-        inputEl.select();
-      }
-    });
+    if (mode !== 'switcher') {
+      requestAnimationFrame(() => {
+        inputEl.focus();
+        if (inputEl.value) inputEl.select();
+      });
+    }
   }
 
   function closePalette(viaEscape = false) {
@@ -3107,6 +3266,35 @@
     const isMeta = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
 
+    if (currentPaletteMode === 'switcher' && isOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closePalette(false);
+      } else if (e.ctrlKey && !e.metaKey && e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (filteredItems.length > 0) {
+          const step = e.shiftKey ? -1 : 1;
+          selectedIndex = (selectedIndex + step + filteredItems.length) % filteredItems.length;
+          updateSelectionVisuals();
+        }
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (filteredItems.length > 0) {
+          const step = e.key === 'ArrowDown' ? 1 : -1;
+          selectedIndex = (selectedIndex + step + filteredItems.length) % filteredItems.length;
+          updateSelectionVisuals();
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        executeSelected(false);
+      }
+      return;
+    }
+
     if (settings.commandBarEnabled) {
       if (isMeta && !e.shiftKey && !e.altKey && (key === 'k' || key === 't')) {
         e.preventDefault();
@@ -3187,11 +3375,18 @@
       e.preventDefault();
       e.stopPropagation();
       if (!isOpen) {
-        openPalette('command');
+        openPalette('switcher');
       } else if (filteredItems.length > 0) {
         selectedIndex = (selectedIndex + 1) % filteredItems.length;
         updateSelectionVisuals();
       }
+    }
+  }
+
+  function onKeyUp(e) {
+    if (currentPaletteMode === 'switcher' && isOpen && e.key === 'Control') {
+      if (filteredItems.length > 0) executeSelected(false);
+      else closePalette(false);
     }
   }
 
@@ -3251,9 +3446,11 @@
   }
 
   window.__workspaceCommandCleanup = () => {
+    cleanupSettingsPanel();
     cleanupDownloadsView();
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('keydown', onKeyDown, true);
+    window.removeEventListener('keyup', onKeyUp, true);
     document.removeEventListener('click', onLinkClick, true);
     chrome.storage.onChanged.removeListener(onStorageChanged);
     chrome.runtime.onMessage.removeListener(onRuntimeMessage);
@@ -3264,51 +3461,41 @@
   };
 
   async function init() {
-    // Build the persistent UI shell as soon as the new document exists. Waiting
-    // for DOMContentLoaded/document_idle made the sidebar visibly vanish during
-    // every full-page navigation.
+    // Build the UI shell at document_start. Keep startup reads parallel so a
+    // tab navigation does not leave the sidebar hidden while each API responds.
     buildShadowDOM();
 
-    try {
-      const stored = await chrome.storage.sync.get(settings);
-      settings = { ...settings, ...stored };
-      isSidebarPinned = settings.sidebarMode === 'pinned';
-    } catch {
-      // Keep defaults
-    }
+    const [stored, winState] = await Promise.all([
+      chrome.storage.sync.get({ ...settings, workspaceName: 'Workspace' }).catch(() => ({})),
+      chrome.runtime.sendMessage({ type: 'DIA_GET_WINDOW_STATE' }).catch(() => null)
+    ]);
+    const { workspaceName = 'Workspace', ...storedSettings } = stored || {};
+    settings = { ...settings, ...storedSettings };
+    isSidebarPinned = settings.sidebarMode === 'pinned';
+    setWorkspaceName(workspaceName);
 
-    try {
-      const savedWorkspace = await chrome.storage.sync.get({ workspaceName: 'Workspace' });
-      setWorkspaceName(savedWorkspace.workspaceName);
-    } catch {
-      setWorkspaceName('Workspace');
-    }
-
-    hostEl.style.display = 'none';
-    applyCommandBarStyles();
-    updateSidebarVisibility();
-
-    try {
-      const winState = await chrome.runtime.sendMessage({ type: 'DIA_GET_WINDOW_STATE' });
-      if (winState) {
-        isFramelessWindow = Boolean(winState.isFrameless);
-        isFullscreenWindow = Boolean(winState.isFullscreen);
-        if (winState.activeTabId) activeTabId = winState.activeTabId;
-      }
-    } catch {
-      // Ignore startup error
+    if (winState) {
+      isFramelessWindow = Boolean(winState.isFrameless);
+      isFullscreenWindow = Boolean(winState.isFullscreen);
+      if (winState.activeTabId) activeTabId = winState.activeTabId;
     }
 
     hostEl.style.display = settings.enabled === false || !isFullscreenWindow ? 'none' : '';
-
-    await refreshSidebarTabs();
-    await refreshTopBarExtensions();
+    applyCommandBarStyles();
     updateSidebarVisibility();
 
     chrome.storage.onChanged.addListener(onStorageChanged);
     chrome.runtime.onMessage.addListener(onRuntimeMessage);
     window.addEventListener('mousemove', onMouseMove, { passive: true });
     window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+
+    if (settings.enabled !== false) {
+      // Make the sidebar visible before asking Chrome for tab and extension
+      // details; these reads can take longer than the page's first paint.
+      void refreshSidebarTabs();
+      void refreshTopBarExtensions();
+    }
   }
 
   document.addEventListener('click', onLinkClick, true);

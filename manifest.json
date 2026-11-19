@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "ArcChrome-Tweaks",
-  "version": "1.1.0",
+  "name": "Arcflow",
+  "version": "1.0.0",
   "description": "Arc-inspired sidebar, command bar, tab organization, and workspace styling for Chrome.",
   "permissions": [
     "storage",
@@ -17,8 +17,11 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "web_accessible_resources": [
+    { "resources": ["popup/embedded.html"], "matches": ["<all_urls>"] }
+  ],
   "action": {
-    "default_title": "ArcChrome-Tweaks Settings",
+    "default_title": "Arcflow Settings",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
@@ -55,21 +58,21 @@
         "default": "Ctrl+K",
         "mac": "Command+K"
       },
-      "description": "Toggle the Floating Dia Command Bar"
+      "description": "Toggle the Arcflow command bar"
     },
     "open-url-bar": {
       "suggested_key": {
         "default": "Ctrl+Shift+L",
         "mac": "Command+Shift+L"
       },
-      "description": "Open Floating Dia Command Bar with current URL selected"
+      "description": "Open the Arcflow URL bar with the current address selected"
     },
     "copy-current-url": {
       "suggested_key": {
         "default": "Ctrl+Shift+C",
         "mac": "Command+Shift+C"
       },
-      "description": "Copy Current URL with Dia Toast (Dia/Arc shortcut)"
+      "description": "Copy the current page URL"
     },
     "toggle-frameless-window": {
       "suggested_key": {

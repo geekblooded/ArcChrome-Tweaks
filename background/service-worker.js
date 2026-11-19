@@ -1,5 +1,5 @@
 /**
- * ArcChrome-Tweaks — Background Service Worker (Manifest V3)
+ * Arcflow — Background Service Worker (Manifest V3)
  *
  * Powers:
  * 1. Default settings initialization & migration (`DiaPatches.dylib` parity)
@@ -7,7 +7,7 @@
  * 3. Keyboard command shortcuts (`Cmd+K`, `Cmd+Shift+L`, `Cmd+Shift+C`, `Cmd+Shift+D`)
  * 4. Open-tab querying, switching, closing (`_DPCloseFromTabSwitcherEntry`), pinning, & reopening
  * 5. Smart Tab Grouping: `Group Tabs by Domain` (`_DPGroupTabsEntry`) & `Tidy Tabs` (`_DPTidyTabsEntry`)
- * 6. Full-screen & Frameless Dia Window (`type: 'popup'`) management
+ * 6. Full-screen & Frameless browser window (`type: 'popup'`) management
  */
 
 const DEFAULT_SETTINGS = {
@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
   revealToolbarOnHover: true, // _DPRevealToolbarOnHoverEntry
   sidebarMode: 'always',    // 'auto' | 'always' | 'pinned' | 'off'
   hidePinnedTabBorder: false, // _DPHidePinnedTabBorderEntry
-  diaShortcutsEnabled: true, // Hook Dia/Arc keyboard shortcuts
+  diaShortcutsEnabled: true, // Use Arcflow keyboard shortcuts
   uiTheme: 'light',
   userChangedTheme: false,
   searchEngine: 'google'
@@ -42,6 +42,20 @@ const DEFAULT_SETTINGS = {
 
 const TAB_GROUP_COLORS = ['blue', 'purple', 'cyan', 'green', 'yellow', 'orange', 'pink', 'red', 'grey'];
 const FOLDER_PARENT_KEY = 'arcchromeFolderParents';
+const RECENT_TABS_KEY = 'arcflowRecentTabsByWindow';
+let recentTabsWriteQueue = Promise.resolve();
+
+function recordRecentTab({ tabId, windowId }) {
+  if (!Number.isInteger(tabId) || !Number.isInteger(windowId)) return recentTabsWriteQueue;
+  recentTabsWriteQueue = recentTabsWriteQueue.then(async () => {
+    const stored = await chrome.storage.session.get(RECENT_TABS_KEY);
+    const byWindow = stored[RECENT_TABS_KEY] || {};
+    const previous = Array.isArray(byWindow[String(windowId)]) ? byWindow[String(windowId)] : [];
+    byWindow[String(windowId)] = [tabId, ...previous.filter((id) => id !== tabId)].slice(0, 100);
+    await chrome.storage.session.set({ [RECENT_TABS_KEY]: byWindow });
+  }).catch(() => {});
+  return recentTabsWriteQueue;
+}
 
 function isInjectableUrl(url) {
   if (!url) return false;
@@ -72,6 +86,8 @@ async function ensureTabInjected(tabId, url) {
 
 async function injectIntoAllOpenTabs() {
   try {
+    const { enabled = false } = await chrome.storage.sync.get({ enabled: false });
+    if (!enabled) return;
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       if (tab.id && isInjectableUrl(tab.url)) {
@@ -99,7 +115,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.local.set(nextSettings);
     await chrome.storage.local.set({ arcInsetDefaultMigrated: true });
   } catch (err) {
-    console.error('[ArcChrome-Tweaks] Failed to initialize settings:', err);
+    console.error('[Arcflow] Failed to initialize settings:', err);
   }
 
   await injectIntoAllOpenTabs();
@@ -303,10 +319,6 @@ async function groupTabsByDomain(windowId) {
 }
 
 const customTabFolderAssignment = new Map();
-function getFaviconFallback(url) {
-  if (!url || !/^https?:\/\//i.test(url)) return '';
-  return `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}`;
-}
 
 async function tidyTabsBySubject(windowId) {
   try {
@@ -364,8 +376,12 @@ async function tidyTabsBySubject(windowId) {
 
 async function getEnrichedOpenTabs() {
   const tabs = await chrome.tabs.query({});
-  const storedFolders = await chrome.storage.local.get({ [FOLDER_PARENT_KEY]: {} });
+  const [storedFolders, recentStored] = await Promise.all([
+    chrome.storage.local.get({ [FOLDER_PARENT_KEY]: {} }),
+    chrome.storage.session.get(RECENT_TABS_KEY)
+  ]);
   const folderParents = storedFolders[FOLDER_PARENT_KEY] || {};
+  const recentByWindow = recentStored[RECENT_TABS_KEY] || {};
   const groupMap = new Map();
   if (chrome.tabGroups && typeof chrome.tabGroups.query === 'function') {
     try {
@@ -391,8 +407,9 @@ async function getEnrichedOpenTabs() {
       index: t.index,
       title: t.title || 'Untitled',
       url: t.url || '',
-      favIconUrl: t.favIconUrl || getFaviconFallback(t.url),
+      favIconUrl: t.favIconUrl || '',
       active: Boolean(t.active),
+      recentIndex: (recentByWindow[String(t.windowId)] || []).indexOf(t.id),
       pinned: Boolean(t.pinned),
       audible: Boolean(t.audible),
       groupId: t.groupId ?? -1,
@@ -483,23 +500,6 @@ async function resolveExtensionIconDataUrl(ext) {
     // Ignore storage read error
   }
 
-  // 4. Fallback to high-res developer domain icon if homepageUrl exists (non-restricted HTTPS origin)
-  if (
-    ext.homepageUrl &&
-    /^https?:\/\//i.test(ext.homepageUrl) &&
-    !/chromewebstore\.google\.com|chrome\.google\.com\/webstore/i.test(ext.homepageUrl)
-  ) {
-    try {
-      const favUrl = `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(ext.homepageUrl)}`;
-      const dataUri = await fetchUrlAsDataUri(favUrl);
-      realExtIconMemoryCache.set(ext.id, dataUri);
-      await chrome.storage.local.set({ [`extIcon_${ext.id}`]: dataUri });
-      return dataUri;
-    } catch {
-      // Fall through
-    }
-  }
-
   return buildExtensionBadgeDataUrl(ext.shortName || ext.name, ext.id);
 }
 
@@ -561,7 +561,7 @@ chrome.commands.onCommand.addListener(async (command) => {
       await chrome.tabs.create({ url: 'chrome://newtab' });
     }
   } catch (err) {
-    console.error('[ArcChrome-Tweaks] Command error:', err);
+    console.error('[Arcflow] Command error:', err);
   }
 });
 
@@ -600,9 +600,11 @@ chrome.windows.onBoundsChanged.addListener(async (win) => {
   }
 });
 
-// Broadcast tab list updates so the in-page Dia Vertical Sidebar updates live
+// Broadcast tab list updates so the in-page Arcflow sidebar updates live
 async function broadcastTabsUpdated() {
   try {
+    const { enabled = false } = await chrome.storage.sync.get({ enabled: false });
+    if (!enabled) return;
     const enriched = await getEnrichedOpenTabs();
     const activeTabs = await chrome.tabs.query({ active: true });
     for (const tab of activeTabs) {
@@ -626,6 +628,7 @@ async function broadcastTabsUpdated() {
 chrome.tabs.onCreated.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`arcRecovery:${tabId}`).catch(() => {});
+  chrome.storage.session.remove(`arcSettingsToken:${tabId}`).catch(() => {});
   broadcastTabsUpdated();
 });
 chrome.tabGroups?.onRemoved?.addListener(async (group) => {
@@ -643,7 +646,9 @@ chrome.tabGroups?.onRemoved?.addListener(async (group) => {
   }
 });
 chrome.tabGroups?.onUpdated?.addListener(() => { broadcastTabsUpdated(); });
-chrome.tabs.onActivated.addListener(() => { broadcastTabsUpdated(); });
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  recordRecentTab(activeInfo).finally(() => broadcastTabsUpdated());
+});
 chrome.tabs.onMoved.addListener(() => { broadcastTabsUpdated(); });
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.title || changeInfo.status === 'complete' || changeInfo.pinned !== undefined || changeInfo.favIconUrl) {
@@ -660,32 +665,59 @@ const RECOVERABLE_NETWORK_ERRORS = new Set([
   'net::ERR_ADDRESS_UNREACHABLE'
 ]);
 chrome.webNavigation.onErrorOccurred.addListener((details) => {
-  if (details.frameId !== 0 || !isInjectableUrl(details.url) || !RECOVERABLE_NETWORK_ERRORS.has(details.error)) return;
-  setTimeout(async () => {
-    try {
-      const [settings, tab, frame] = await Promise.all([
-        chrome.storage.sync.get({ enabled: false }),
-        chrome.tabs.get(details.tabId),
-        chrome.webNavigation.getFrame({ tabId: details.tabId, frameId: 0 })
-      ]);
-      if (!settings.enabled || !frame?.errorOccurred || frame.url !== details.url) return;
-      const win = await chrome.windows.get(tab.windowId);
-      if (win.state !== 'fullscreen') return;
-      const key = `arcRecovery:${details.tabId}`;
-      await chrome.storage.session.set({ [key]: { url: details.url, error: details.error } });
-      // Recheck after asynchronous work so a newer navigation is never replaced.
-      const current = await chrome.webNavigation.getFrame({ tabId: details.tabId, frameId: 0 });
-      if (!current?.errorOccurred || current.url !== details.url) return;
-      await chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL('newtab/recovery.html?recovery=1') });
-    } catch {
-      // The tab or window may have closed or navigated while the error was handled.
-    }
-  }, 350);
+  // Ignore navigation metadata unless Arcflow is enabled by the user.
+  chrome.storage.sync.get({ enabled: false }).then(({ enabled }) => {
+    if (!enabled || details.frameId !== 0 || !isInjectableUrl(details.url) || !RECOVERABLE_NETWORK_ERRORS.has(details.error)) return;
+    setTimeout(async () => {
+      try {
+        const [settings, tab, frame] = await Promise.all([
+          chrome.storage.sync.get({ enabled: false }),
+          chrome.tabs.get(details.tabId),
+          chrome.webNavigation.getFrame({ tabId: details.tabId, frameId: 0 })
+        ]);
+        if (!settings.enabled || !frame?.errorOccurred || frame.url !== details.url) return;
+        const win = await chrome.windows.get(tab.windowId);
+        if (win.state !== 'fullscreen') return;
+        const key = `arcRecovery:${details.tabId}`;
+        await chrome.storage.session.set({ [key]: { url: details.url, error: details.error } });
+        // Recheck after asynchronous work so a newer navigation is never replaced.
+        const current = await chrome.webNavigation.getFrame({ tabId: details.tabId, frameId: 0 });
+        if (!current?.errorOccurred || current.url !== details.url) return;
+        await chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL('newtab/recovery.html?recovery=1') });
+      } catch {
+        // The tab or window may have closed or navigated while the error was handled.
+      }
+    }, 350);
+  }).catch(() => {});
 });
 
 // Message router for content scripts, New Tab override, and popup UI
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type) return false;
+
+  if (message.type === 'ARC_SETTINGS_TOKEN') {
+    (async () => {
+      try {
+        if (!sender.tab?.id || sender.frameId !== 0 || typeof message.token !== 'string' || !/^[a-f0-9]{64}$/.test(message.token)) throw new Error('Invalid request');
+        await chrome.storage.session.set({ [`arcSettingsToken:${sender.tab.id}`]: message.token });
+        sendResponse({ ok: true });
+      } catch { sendResponse({ ok: false }); }
+    })();
+    return true;
+  }
+  if (message.type === 'ARC_SETTINGS_VERIFY') {
+    (async () => {
+      try {
+        if (!sender.tab?.id || !sender.frameId || !sender.url?.startsWith(chrome.runtime.getURL('popup/embedded.html'))) throw new Error('Invalid frame');
+        const key = `arcSettingsToken:${sender.tab.id}`;
+        const stored = await chrome.storage.session.get(key);
+        const ok = typeof message.token === 'string' && stored[key] === message.token;
+        if (ok) await chrome.storage.session.remove(key);
+        sendResponse({ ok });
+      } catch { sendResponse({ ok: false }); }
+    })();
+    return true;
+  }
 
   if (message.type === 'DIA_ACTIVATE_ARC') {
     (async () => {
@@ -755,6 +787,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DIA_GET_OPEN_TABS') {
     (async () => {
       try {
+        const { enabled = false } = await chrome.storage.sync.get({ enabled: false });
+        if (!enabled) { sendResponse({ tabs: [] }); return; }
         const tabs = await getEnrichedOpenTabs();
         sendResponse({ tabs, activeTabId: sender.tab?.id ?? null });
       } catch (err) {
@@ -1014,6 +1048,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DIA_LIST_DOWNLOADS') {
     (async () => {
       try {
+        const { enabled = false } = await chrome.storage.sync.get({ enabled: false });
+        if (!enabled) { sendResponse({ ok: false, items: [] }); return; }
         const query = String(message.query || '').trim().slice(0, 200);
         const items = await chrome.downloads.search({ limit: 200, orderBy: ['-startTime'], ...(query ? { query: query.split(/\s+/) } : {}) });
         sendResponse({ ok: true, items: items.map(({ id, filename, state, danger, exists, startTime, bytesReceived, totalBytes, paused, error }) => ({ id, filename, state, danger, exists, startTime, bytesReceived, totalBytes, paused, error })) });
@@ -1085,6 +1121,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DIA_GET_INSTALLED_EXTENSIONS') {
     (async () => {
       try {
+        const { enabled = false } = await chrome.storage.sync.get({ enabled: false });
+        if (!enabled) { sendResponse({ ok: true, extensions: [] }); return; }
         const extensions = await getInstalledExtensionsList();
         sendResponse({ ok: true, extensions });
       } catch (err) {
@@ -1117,7 +1155,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           ok: false,
           unsupported: true,
           error: String(err),
-          message: 'Open ArcChrome-Tweaks from its native Chrome toolbar icon.'
+          message: 'Open Arcflow from its native Chrome toolbar icon.'
         });
       }
     })();

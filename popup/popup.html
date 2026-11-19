@@ -4,13 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>Workspace Settings — Patches</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <title>Arcflow Settings</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -22,10 +16,13 @@
         <div class="dia-welcome-hero" aria-hidden="true"></div>
         <img src="assets/onboarding-logo.png" alt="" class="dia-welcome-logo" />
         <div class="dia-welcome-content" id="welcomeIntro">
-          <h1 class="dia-welcome-title">Turn Arc to Chrome</h1>
-          <p class="dia-welcome-subtitle">Turn Google Chrome into a chill version of the Arc browser! Think vertical tabs, a floating command bar, and nested folders for easy tab organization. Plus, quick keyboard shortcuts for all the techie-nerds out there!</p>
-          <button type="button" id="bigPowerBtn" class="dia-big-power-btn" aria-label="Turn on Arc experience and enter full screen" title="Enter full screen">
-            <span class="dia-activate-label">Activate Arc Experience</span><span class="dia-activate-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          <div class="dia-welcome-intro">
+            <h1 class="dia-welcome-title">Welcome to Arcflow</h1>
+            <p class="dia-privacy-notice">Turn Google Chrome into a chill version of the Arc browser! Think vertical tabs, a floating command bar, and nested folders for easy tab organization. Plus, quick keyboard shortcuts for all the techie-nerds out there!</p>
+          </div>
+          <label class="dia-privacy-consent"><input id="dataUseConsent" type="checkbox"><span>I understand and agree to this data use.</span></label>
+          <button type="button" id="bigPowerBtn" class="dia-big-power-btn" aria-label="Agree to Arcflow data use and enable it" title="Agree and enable Arcflow" disabled>
+            <span class="dia-activate-label">Activate Arcflow</span><span class="dia-activate-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
           </button>
           <span id="setupError" class="dia-setup-error" role="alert" hidden></span>
         </div>

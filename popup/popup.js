@@ -1,5 +1,5 @@
 /**
- * ArcChrome-Tweaks — Popup Settings Controller (Split-View + Iconly + Light/Dark UI)
+ * Arcflow — Popup Settings Controller (Split-View + Iconly + Light/Dark UI)
  */
 
 const DEFAULT_SETTINGS = {
@@ -52,6 +52,7 @@ const els = {
   welcomeView: document.getElementById('welcomeView'),
   settingsShell: document.getElementById('settingsShell'),
   bigPowerBtn: document.getElementById('bigPowerBtn'),
+  dataUseConsent: document.getElementById('dataUseConsent'),
   headerPowerToggleBtn: document.getElementById('headerPowerToggleBtn'),
   railItems: document.querySelectorAll('.dia-rail-item'),
   themeToggleBtn: document.getElementById('themeToggleBtn'),
@@ -116,6 +117,12 @@ let navHistory = ['detail-bezel'];
 let navIndex = 0;
 let activeCategory = 'page';
 let currentWindowState = null;
+const isEmbeddedSettings = location.pathname.endsWith('/popup/embedded.html');
+
+function closeSettingsView() {
+  if (isEmbeddedSettings) window.parent.postMessage({ type: 'ARC_SETTINGS_CLOSE' }, '*');
+  else window.close();
+}
 
 const VIEW_TITLES = {
   overview: 'Patches',
@@ -189,6 +196,7 @@ function renderSettings(s) {
   if (els.welcomeView && els.settingsShell) {
     const fullscreen = currentWindowState?.state === 'fullscreen';
     const setupComplete = isEnabled && fullscreen;
+    document.body.classList.toggle('dia-onboarding', !setupComplete);
     els.welcomeView.hidden = setupComplete;
     els.settingsShell.hidden = !setupComplete;
     document.getElementById('welcomeIntro').hidden = setupComplete;
@@ -390,30 +398,40 @@ function bindEvents() {
     });
   }
 
-  els.bigPowerBtn.addEventListener('click', async () => {
-    const errorEl = document.getElementById('setupError');
-    errorEl.hidden = true;
-    els.bigPowerBtn.disabled = true;
-    els.bigPowerBtn.classList.add('is-activating');
-    try {
-      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) await new Promise(resolve => setTimeout(resolve, 500));
-      const res = await chrome.runtime.sendMessage({ type: 'DIA_ACTIVATE_ARC' });
-      if (!res?.ok) throw new Error(res?.error || 'Could not enter full screen.');
-      currentSettings = { ...currentSettings, enabled: true, activationMode: 'fullscreen' };
-      await syncWindowStateToggles();
-    } catch (err) {
-      errorEl.textContent = err.message || 'Could not enter full screen.';
-      errorEl.hidden = false;
-    } finally {
-      els.bigPowerBtn.classList.remove('is-activating');
-      els.bigPowerBtn.disabled = false;
-    }
-  });
+  if (els.dataUseConsent && els.bigPowerBtn) {
+    els.dataUseConsent.addEventListener('change', () => {
+      els.bigPowerBtn.disabled = !els.dataUseConsent.checked;
+    });
+
+    els.bigPowerBtn.addEventListener('click', async () => {
+      if (!els.dataUseConsent.checked) return;
+      const errorEl = document.getElementById('setupError');
+      errorEl.hidden = true;
+      els.bigPowerBtn.disabled = true;
+      els.bigPowerBtn.classList.add('is-activating');
+      try {
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) await new Promise(resolve => setTimeout(resolve, 500));
+        const res = await chrome.runtime.sendMessage({ type: 'DIA_ACTIVATE_ARC' });
+        if (!res?.ok) throw new Error(res?.error || 'Could not enter full screen.');
+        currentSettings = { ...currentSettings, enabled: true, activationMode: 'fullscreen' };
+        await syncWindowStateToggles();
+      } catch (err) {
+        errorEl.textContent = err.message || 'Could not enter full screen.';
+        errorEl.hidden = false;
+      } finally {
+        els.bigPowerBtn.classList.remove('is-activating');
+        els.bigPowerBtn.disabled = !els.dataUseConsent.checked;
+      }
+    });
+  }
 
   async function turnOff() {
+    if (els.dataUseConsent) els.dataUseConsent.checked = false;
+    if (els.bigPowerBtn) els.bigPowerBtn.disabled = true;
     await chrome.runtime.sendMessage({ type: 'DIA_DEACTIVATE_ARC' });
     await saveSettings({ enabled: false });
     await syncWindowStateToggles();
+    if (isEmbeddedSettings) closeSettingsView();
   }
   els.headerPowerToggleBtn.addEventListener('click', turnOff);
 
@@ -431,7 +449,7 @@ function bindEvents() {
 
   els.framelessModeToggle.addEventListener('change', async () => {
     await chrome.runtime.sendMessage({ type: 'DIA_TOGGLE_FRAMELESS_WINDOW' });
-    window.close();
+    closeSettingsView();
   });
 
   els.revealToolbarOnHoverToggle.addEventListener('change', async (e) => {
@@ -597,25 +615,31 @@ function bindEvents() {
           type: 'DIA_TOGGLE_COMMAND_BAR',
           mode: 'command'
         });
-        window.close();
+        closeSettingsView();
         return;
       }
       await chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') });
-      window.close();
+      closeSettingsView();
     } catch {
       await chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') });
-      window.close();
+      closeSettingsView();
     }
   });
 
   // Detail 3: Shortcuts
   els.configureShortcutsBtn.addEventListener('click', async () => {
     await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
-    window.close();
+    closeSettingsView();
   });
 }
 
 async function init() {
+  if (isEmbeddedSettings) {
+    document.body.classList.add('dia-embedded');
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') window.parent.postMessage({ type: 'ARC_SETTINGS_CLOSE' }, '*');
+    });
+  }
   currentSettings = await loadSettings();
   // Put detailed controls directly under their top-level category.
   document.querySelector('#detail-bezel .dia-card-stack').prepend(document.querySelector('[data-drill="detail-bezel"]'));
@@ -631,6 +655,7 @@ async function init() {
   bindEvents();
   navigateToView('detail-bezel', false);
   applyCategoryAndSearch();
+  if (isEmbeddedSettings) window.parent.postMessage({ type: 'ARC_SETTINGS_READY' }, '*');
 }
 
 init();
